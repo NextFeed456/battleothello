@@ -672,9 +672,11 @@ conn.on('open', () => {
             if(!isGameOver) {
                 if(gameMode === 'cpu' && currentPlayer === WHITE) {
                     setTimeout(playCpuTurn, 1000);
-                } else if(currentPlayer === BLUE && (gameMode === 'cpu' || isHost)) {
-                    setTimeout(playBlueTurn, 800);
-                }
+                } else if(currentPlayer === BLUE) {
+   				 if(gameMode === 'cpu' || isHost) {
+       			 setTimeout(playBlueTurn, 800);
+    		}
+}
             }
         }
 
@@ -705,8 +707,13 @@ conn.on('open', () => {
         function playBlueTurn() {
             if(isGameOver)return; let s=0,r,c,v=false;
             while(!v&&s<100){ r=Math.floor(Math.random()*8); c=Math.floor(Math.random()*8); if(board[r][c]!==BLUE)v=true; s++; }
-            board[r][c]=BLUE; playSE('blue'); sendEffect('blue', null); log(`青い駒が乱入: (${getCoord(r,c)})`); nextTurn();
-        }
+            board[r][c]=BLUE; playSE('blue');
+			sendEffect('blue', null);
+			log(`青い駒が乱入: (${getCoord(r,c)})`);
+			if(gameMode === 'cpu' || gameMode === 'online') {
+ 		   nextTurn();
+		}
+     }
 
         function startGamble(pid) {
             if(gameMode==='online' && (currentPlayer !== pid || gambleOwner !== pid || pid !== myPlayerId)) {
@@ -853,7 +860,11 @@ conn.on('open', () => {
 		const p1 = document.getElementById('p1Stats'),
 		      p2 = document.getElementById('p2Stats');
             p1.classList.toggle('active-turn', currentPlayer===BLACK); p2.classList.toggle('active-turn', currentPlayer===WHITE);
-            if(currentPlayer===BLUE){ p1.classList.remove('active-turn'); p2.classList.remove('active-turn'); document.getElementById('board').style.borderColor='#00ffff'; }
+            if(currentPlayer===BLUE){
+				p1.classList.remove('active-turn');
+				p2.classList.remove('active-turn');
+				document.getElementById('board').style.borderColor='#00ffff'; 
+			}
             else document.getElementById('board').style.borderColor='#444';
             if(phoenixModeUsed) {
                 if(destroyOwner===BLACK) document.getElementById('p1Stats').classList.add('phoenix-active');
@@ -927,7 +938,11 @@ conn.on('open', () => {
             if(!canMove(currentPlayer) && currentPlayer!==BLUE){
                 const next=(currentPlayer===BLACK)?WHITE:(phoenixModeUsed?BLUE:BLACK);
                 log(`${currentPlayer===BLACK?"P1":"P2"} パス！`); currentPlayer=next; 
-                if(currentPlayer===BLUE && (gameMode==='cpu' || isHost)) setTimeout(playBlueTurn,800);
+                if(currentPlayer===BLUE){
+   					 if(gameMode==='cpu' || gameMode==='online'){
+   				     setTimeout(playBlueTurn,800);
+	 	   }
+		}
             }
         }
         function canMove(p){
