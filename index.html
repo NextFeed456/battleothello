@@ -299,6 +299,7 @@
         let gameMode = 'cpu';
         let peer = null, conn = null;
         let myPlayerId = BLACK;
+		let isHost = false;
 
         let board=[], hp={}, currentPlayer=1, isGameOver=false;
 	let volume = 0.2;
@@ -330,6 +331,7 @@
             gameMode = 'online'; document.getElementById('connectionStatus').innerText = "IDを生成中...";
             peer = new Peer();
             peer.on('open', (id) => {
+				isHost = true; // ←これ追加
                 document.getElementById('onlineMenu').innerHTML = `
                     <div style="font-size:20px; color:cyan;">あなたのID:</div>
                     <div style="font-size:30px; font-weight:bold; background:#333; padding:10px; user-select:all;">${id}</div>
@@ -379,7 +381,7 @@
                 if(data.visual === 'damage') showDamagePopup(data.val, data.target, data.self, data.heal);
                 if(data.visual === 'flyaway') triggerFlyawayVisual(data.target);
                 if(data.visual === 'burst') triggerBurstVisual();
-                if(data.visual === 'alert') alert(data.msg);
+                if(data.visual === 'alert') log(data.msg);
             }
         }
         function sendLog(msg) { if(conn) conn.send({ type: 'log', msg: msg }); }
@@ -836,6 +838,12 @@
             document.getElementById('resTurns').textContent = stats.turns;
             document.getElementById('resultScreen').style.display='flex';
 }
+		// 定期同期（オンライン時のみ）
+setInterval(() => {
+    if (gameMode === 'online' && conn) {
+        syncData();
+    }
+}, 500);
 
 // ←ここに置く！！
 document.getElementById('settingsBtn').onclick = () => {
