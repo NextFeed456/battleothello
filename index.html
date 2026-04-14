@@ -498,6 +498,9 @@ conn.on('open', () => {
                 if(data.visual === 'burst') triggerBurstVisual();
                 if(data.visual === 'alert') log(data.msg);
             }
+			else if (data.type === 'phoenix') {
+		    activatePhoenix(data.loser, true);
+			}
         }
         function sendLog(msg) { if(conn) conn.send({ type: 'log', msg: msg }); }
         function sendEffect(sound, visual, params={}) { if(conn) conn.send({ type: 'effect', sound, visual, ...params }); }
@@ -814,12 +817,18 @@ conn.on('open', () => {
             board[r][c]=EMPTY; 
         }
         function applyDamage(t,v){ 
-            hp[t]-=v; 
-            if((hp[BLACK]<=0 || hp[WHITE]<=0) && !phoenixModeUsed) {
-                activatePhoenix((hp[BLACK]<=0)?BLACK:WHITE);
-            }
-            else if(hp[t]<0) hp[t]=0; 
+    hp[t]-=v; 
+
+    if((hp[BLACK]<=0 || hp[WHITE]<=0) && !phoenixModeUsed) {
+
+        // 🔥ここが重要
+        if(gameMode === 'cpu' || isHost){
+            activatePhoenix((hp[BLACK]<=0)?BLACK:WHITE);
+			
         }
+
+    } else if(hp[t]<0) hp[t]=0; 
+}
         function showDamagePopup(v,t,s=false,h=false){
             const hud = document.getElementById(t===BLACK ? 'p1Stats' : 'p2Stats');
             const rect = hud.getBoundingClientRect();
@@ -830,27 +839,45 @@ conn.on('open', () => {
             document.body.appendChild(p); setTimeout(()=>p.remove(),1000);
         }
 
-        function activatePhoenix(loser){
-            const winner = (loser===BLACK) ? WHITE : BLACK;
-            phoenixModeUsed=true; 
-            const msg = `🔥 フェニックスモード発動！互いにHP500で再開！`;
-            log(msg); alert(msg); sendEffect('alert', 'alert', {msg});
-            
-            // フラグの強制リセット（重要）
-            isDestroyMode = false; isDestroyRewardMode = false; destroyCount = 0;
+        function activatePhoenix(loser, isRemote = false){
 
-            hp[BLACK]=PHOENIX_HP; hp[WHITE]=PHOENIX_HP;
-            // No board revert logic - keeping current state
-            currentPlayer=loser; // 死んだ側から再開
-            
-            maxCharges[BLACK]=5; maxCharges[WHITE]=5; charges[BLACK]=0; charges[WHITE]=0;
-            destroyOwner=loser; gambleOwner=winner;
-            
-            updateUI(); renderBoard(); syncData();
-            
-            // CPU再開処理
-            if(gameMode === 'cpu' && currentPlayer === WHITE) setTimeout(playCpuTurn, 2000);
-        }
+    const winner = (loser===BLACK) ? WHITE : BLACK;
+
+    phoenixModeUsed = true;
+
+    const msg = "🔥 フェニックスモード発動！互いにHP500で再開！";
+
+    // ❌ alert削除
+    log(msg);
+    sendLog(msg); // ←これ追加
+
+    isDestroyMode = false;
+    isDestroyRewardMode = false;
+    destroyCount = 0;
+
+    hp[BLACK] = PHOENIX_HP;
+    hp[WHITE] = PHOENIX_HP;
+
+    currentPlayer = loser;
+
+    maxCharges[BLACK]=5;
+    maxCharges[WHITE]=5;
+    charges[BLACK]=0;
+    charges[WHITE]=0;
+
+    destroyOwner = loser;
+    gambleOwner = winner;
+
+    updateUI();
+    renderBoard();
+    syncData();
+	if(gameMode === 'online' && isHost && !isRemote){
+    conn.send({
+        type: 'phoenix',
+        loser: loser
+    });
+}
+}
 
         function updateUI() {
             document.getElementById('hpBlack').textContent=hp[BLACK]; document.getElementById('hpWhite').textContent=hp[WHITE];
