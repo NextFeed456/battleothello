@@ -713,10 +713,10 @@ conn.on('open', () => {
             board[r][c]=BLUE; playSE('blue');
 			sendEffect('blue', null);
 			log(`青い駒が乱入: (${getCoord(r,c)})`);
-			if(gameMode === 'cpu' || gameMode === 'online') {
- 		   nextTurn();
-		}
-     }
+			    if(gameMode === 'cpu' || isHost) {
+        nextTurn();
+    }
+}
 
         function startGamble(pid) {
             if(gameMode==='online' && (currentPlayer !== pid || gambleOwner !== pid || pid !== myPlayerId)) {
