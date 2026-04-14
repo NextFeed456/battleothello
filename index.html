@@ -214,7 +214,7 @@
 <div id="startScreen" class="screen-overlay" style="position: relative; overflow: hidden;">
 
     <!-- 背景 -->
-    <img src="title.png" style="
+	<img src="./title.png"
         position: absolute;
         top: 0;
         left: 0;
@@ -490,7 +490,18 @@ conn.on('open', () => {
         function sendLog(msg) { if(conn) conn.send({ type: 'log', msg: msg }); }
         function sendEffect(sound, visual, params={}) { if(conn) conn.send({ type: 'effect', sound, visual, ...params }); }
 
-        function initAudio() { try{const A=window.AudioContext||window.webkitAudioContext;audioCtx=new A();}catch(e){} }
+		function initAudio() {
+    try{
+        const A = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new A();
+
+        // 👇これ追加（超重要）
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+        }
+
+    }catch(e){}
+}
         function playTone(f,t,d,v=0.1) {
             if(!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain();
             o.type=t;o.frequency.setValueAtTime(f,audioCtx.currentTime); g.gain.setValueAtTime(v * volume, audioCtx.currentTime);
