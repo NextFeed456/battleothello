@@ -299,8 +299,11 @@
         <button id="toolBtn" onclick="toggleToolMenu()">道具</button>
     </div>
 
-    <div class="hud">
-        <div id="ultimateContainer"><div class="ult-label">ULTIMATE GAUGE</div><div class="ult-slots"><div id="ult1" class="ult-slot"></div><div id="ult2" class="ult-slot"></div><div id="ult3" class="ult-slot"></div></div></div>
+    <div id="gameScreen" style="display:none;">
+<div class="hud">
+        <div id="ultimateContainer">
+			<div class="ult-label">ULTIMATE GAUGE</div>
+			<div class="ult-slots"><div id="ult1" class="ult-slot"></div><div id="ult2" class="ult-slot"></div><div id="ult3" class="ult-slot"></div></div></div>
 
         <div id="p1Stats" class="player-stats active-turn">
             <div>PLAYER 1 (BLACK)</div>
@@ -963,12 +966,15 @@ function startCpuGame() {
     gameMode = 'cpu'; 
     myPlayerId = BLACK; 
 
-    opponentName = "CPU"; // ←これ追加！！
+    opponentName = "CPU";
 
-    document.getElementById('lobbyScreen').style.display = 'none'; 
+    document.getElementById('lobbyScreen').style.display = 'none';
+
+    document.getElementById('gameScreen').style.display = 'block';
+
     initGame(); 
-	updatePlayerNames();
-}	
+    updatePlayerNames();
+}
 
 		// 定期同期（オンライン時のみ）
 setInterval(() => {
