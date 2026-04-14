@@ -210,11 +210,8 @@
         </div>
         <div id="connectionStatus"></div>
     </div>
-
 <div id="startScreen" class="screen-overlay" style="position: relative; overflow: hidden;">
-
-    <!-- 背景 -->
-	<img src="./title.png"
+    <video autoplay muted loop playsinline id="bgVideo" style="
         position: absolute;
         top: 0;
         left: 0;
@@ -223,7 +220,20 @@
         object-fit: cover;
         z-index: 0;
     ">
+        <source src="./bg.mp4" type="video/mp4">
+    </video>
 
+    <div style="
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.4); z-index: 1;
+    "></div>
+
+    <div style="
+        position: absolute; top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+        display: flex; flex-direction: column; align-items: center;
+    ">
     <!-- 🔥 ここが超重要 -->
     <div style="
         position: absolute;
