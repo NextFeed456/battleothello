@@ -341,8 +341,11 @@
                 myPlayerId = BLACK;
             });
             peer.on('connection', (c) => {
-                conn = c; setupConnection(); document.getElementById('lobbyScreen').style.display = 'none';
-                initGame(); setTimeout(() => syncData(), 500);
+                conn = c; 
+				setupConnection();
+				document.getElementById('lobbyScreen').style.display = 'none';
+                initGame(); 
+				setTimeout(() => syncData(), 500);
             });
         }
         function initJoin() {
@@ -358,6 +361,8 @@ peer.on('open', (id) => {
     conn.on('open', () => {
         console.log("接続成功");
         setupConnection();
+	    // 👇これ追加
+    initGame();		
     });
 
     conn.on('error', (err) => {
