@@ -443,8 +443,6 @@ conn.on('open', () => {
     setupConnection();
 
     sendMyName(); // ←これ追加（超重要）
-
-    initGame();		
 });
 
     conn.on('error', (err) => {
@@ -545,8 +543,13 @@ conn.on('open', () => {
             document.getElementById('p2Stats').classList.remove('phoenix-active');
             document.getElementById('resultScreen').style.display='none';
             
-            updateUI(); renderBoard(); log("バトル開始！");
+            updateUI(); 
+			renderBoard();
+			log("バトル開始！");
+			    if(gameMode === 'online' && isHost){
+        syncData();
         }
+		}
 
         function toggleToolMenu() {
             const menu=document.getElementById('itemMenu'); menu.style.display=(menu.style.display==='block')?'none':'block';
