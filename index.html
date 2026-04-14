@@ -425,7 +425,11 @@ peer.on('connection', (c) => {
     document.getElementById('startScreen').style.display = 'none';
 
     initGame();
-    setTimeout(() => syncData(), 500);
+
+	// 👇追加
+	syncData();
+	setTimeout(() => syncData(), 500);
+	setTimeout(() => syncData(), 1000);
 });
         }
         function initJoin() {
@@ -442,7 +446,9 @@ conn.on('open', () => {
     console.log("接続成功");
     setupConnection();
 
-    sendMyName(); // ←これ追加（超重要）
+    sendMyName(); 
+	document.getElementById('lobbyScreen').style.display = 'none';
+    document.getElementById('startScreen').style.display = 'none';
 });
 
     conn.on('error', (err) => {
