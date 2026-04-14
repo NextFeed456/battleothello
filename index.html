@@ -965,11 +965,6 @@ conn.on('open', () => {
             if(!canMove(currentPlayer) && currentPlayer!==BLUE){
                 const next=(currentPlayer===BLACK)?WHITE:(phoenixModeUsed?BLUE:BLACK);
                 log(`${currentPlayer===BLACK?"P1":"P2"} パス！`); currentPlayer=next; 
-                if(currentPlayer===BLUE){
-    if(gameMode==='cpu' || isHost){
-        setTimeout(playBlueTurn,800);
-    }
-}
             }
         }
         function canMove(p){
