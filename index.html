@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Othello</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            font-family: 'Courier New', "Meiryo", sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            background-color: #1a1a1a; color: white;
+            margin: 0; padding: 10px; user-select: none; overflow: hidden;
+        }
+
+        /* --- UI Components --- */
+        #toolArea { position: fixed; bottom: 20px; left: 20px; z-index: 50; }
+        #toolBtn {
+            background: #555; color: #ddd; border: 1px solid #777;
+            padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer;
+            font-family: sans-serif; transition: 0.2s;
+        }
+        #toolBtn:hover { background: #666; color: #fff; }
+        
+        #itemMenu {
+            display: none; position: absolute; bottom: 30px; left: 0;
+            background: #222; border: 1px solid #555; border-radius: 4px;
+            width: 140px; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .item-row {
+            padding: 8px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between;
+        }
+        .item-row:hover { background: #333; }
+        .item-disabled { color: #555; cursor: not-allowed; text-decoration: line-through; }
+
+        .hud {
+            display: flex; justify-content: space-between; width: 480px;
+            margin-bottom: 5px; z-index: 10; position: relative;
+        }
+        .player-stats {
+            text-align: center; width: 45%; padding: 8px;
+            border-radius: 8px; border: 2px solid #555;
+            background: rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            transition: all 0.3s;
+        }
+        .active-turn { border-color: yellow; box-shadow: 0 0 15px yellow; }
+        .phoenix-active { border-color: #ff4500 !important; box-shadow: 0 0 20px #ff4500 !important; }
+
+        .bar-container { width: 100%; height: 6px; background: #333; margin: 4px 0; border-radius: 2px; }
+        .hp-bar { height: 100%; transition: width 0.3s; }
+        .charge-bar { height: 100%; width: 0%; transition: width 0.3s; }
+        .skill-info { font-size: 10px; margin-top:5px; display:flex; justify-content:space-between; color:#aaa; }
+
+        .ability-btn {
+            display: none; width: 100%; margin-top: 5px;
+            border: none; padding: 5px; font-family: "Meiryo", sans-serif;
+            cursor: pointer; border-radius: 4px; font-size: 12px; font-weight: bold;
+        }
+        .destroy-btn { background: #8e44ad; color: white; }
+        .destroy-btn.active { background: #ff0000; animation: blink 0.5s infinite; }
+        .gamble-btn { background: #f1c40f; color: #333; }
+        .useless-dice-btn {
+            display: none; width: 100%; margin-top: 5px;
+            background: #7f8c8d; color: white; border: 1px dashed #aaa;
+            padding: 5px; cursor: help; border-radius: 4px; font-size: 10px;
+        }
+        .btn-disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        #ultimateContainer {
+            position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+            width: 200px; text-align: center; display: none;
+        }
+        .ult-label { font-size: 10px; color: #00ffff; text-shadow: 0 0 5px cyan; letter-spacing: 2px; font-weight: bold; }
+        .ult-slots { display: flex; justify-content: center; gap: 5px; margin-top: 2px; }
+        .ult-slot { width: 20px; height: 10px; background: #333; border: 1px solid #555; skew: -20deg; }
+        .ult-filled { background: #00ffff; box-shadow: 0 0 10px #00ffff; }
+
+        .board-wrapper {
+            display: grid; grid-template-columns: 30px 416px; grid-template-rows: 30px 416px;
+            gap: 0; background: #1a1a1a;
+        }
+        .coord-top {
+            grid-column: 2; grid-row: 1; display: grid; grid-template-columns: repeat(8, 52px);
+            align-items: center; justify-items: center; font-weight: bold; color: #888;
+        }
+        .coord-left {
+            grid-column: 1; grid-row: 2; display: grid; grid-template-rows: repeat(8, 52px);
+            align-items: center; justify-items: center; font-weight: bold; color: #888;
+        }
+        #board {
+            grid-column: 2; grid-row: 2;
+            display: grid; grid-template-columns: repeat(8, 50px); grid-template-rows: repeat(8, 50px);
+            gap: 2px; background: #000; border: 5px solid #444; z-index: 10; position: relative;
+        }
+
+        .cell { width: 50px; height: 50px; background: #27ae60; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .piece { width: 40px; height: 40px; border-radius: 50%; display: block; position:relative; z-index: 5; transition: transform 0.2s, background-color 0.5s; }
+        .black-piece { background: black; border: 1px solid #333; box-shadow: inset 3px 3px 5px #555; }
+        .white-piece { background: white; border: 1px solid #ccc; box-shadow: inset 3px 3px 5px #ddd; }
+        .blue-piece { background: #00ffff; border: 1px solid #fff; box-shadow: 0 0 10px cyan, inset 2px 2px 5px rgba(255,255,255,0.8); animation: pulseBlue 1s infinite alternate; }
+        @keyframes pulseBlue { from { box-shadow: 0 0 5px cyan; } to { box-shadow: 0 0 15px cyan; } }
+        .destroy-mode .cell { cursor: crosshair; background-color: #581b1b; }
+        
+        @keyframes flyAwayAnim { 
+            0% { transform: scale(1) rotate(0deg); opacity: 1; } 
+            100% { transform: translate(500px, -800px) rotate(1080deg) scale(0.5); opacity: 0; } 
+        }
+        .flying-piece { 
+            position: fixed !important; z-index: 99999 !important; pointer-events: none; 
+            animation: flyAwayAnim 1.5s ease-in forwards; margin: 0 !important; width: 40px !important; height: 40px !important; border-radius: 50% !important; 
+        }
+        .flying-black { background: black !important; border: 1px solid #333 !important; }
+        .flying-white { background: white !important; border: 1px solid #ccc !important; }
+
+        .shaking { animation: shake 0.3s linear; }
+        @keyframes shake { 0%{transform:translate(0,0)} 25%{transform:translate(-3px,3px)} 50%{transform:translate(3px,-3px)} 75%{transform:translate(-3px,-3px)} 100%{transform:translate(0,0)} }
+
+        #burstOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 999; display: flex; justify-content: center; align-items: center; }
+        .burst-text { font-size: 80px; font-weight: 900; color: black; transform: scale(0); font-family: sans-serif; text-shadow: 4px 4px 0px #00ffff; text-align: center; }
+        @keyframes burstAnim { 0% { opacity: 1; background: white; } 10% { background: transparent; } 100% { opacity: 0; background: transparent; } }
+        @keyframes textZoom { 0% { transform: scale(0); opacity: 0; } 20% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+
+        /* Screens */
+        .screen-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 300; }
+        .overlay-dim { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; flex-direction: column; z-index: 100; text-align: center; }
+        
+        .lobby-btn { padding: 15px 30px; font-size: 20px; cursor: pointer; background: #e67e22; color: white; border: none; border-radius: 5px; margin: 10px; width: 300px; font-family: "Meiryo", sans-serif; }
+        .lobby-input { padding: 10px; font-size: 18px; width: 280px; margin: 10px; text-align: center; }
+        #connectionStatus { color: #00ff00; margin-top: 10px; height: 20px;}
+        .big-text { font-size: 32px; font-weight: bold; margin: 5px; color: #fff; text-shadow: 0 0 10px gold; }
+        
+        .damage-popup {
+            position: absolute; font-weight: bold; font-size: 40px; pointer-events: none; z-index: 999;
+            text-shadow: 2px 2px 0px #000;
+            animation: floatUp 1s forwards;
+        }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+
+        /* Result Screen - Center Box */
+        #resultScreen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center; align-items: center; z-index: 400;
+        }
+        .result-box {
+            background: #222; border: 3px solid #555; border-radius: 15px;
+            padding: 30px; text-align: center; width: 400px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            animation: popIn 0.4s ease-out;
+        }
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        #resultTable { margin: 20px auto; border-collapse: collapse; width: 100%; font-family: Meiryo; }
+        #resultTable td, #resultTable th { border: 1px solid #555; padding: 10px; text-align: center; }
+        #resultTable th { background: #333; }
+        .winner-text { font-size: 36px; font-weight: bold; color: gold; margin-bottom: 20px; text-shadow: 0 0 10px orange; }
+    </style>
+</head>
+<body>
+	<div id="settingsBtn" style="
+	    position: fixed;
+	    top: 10px;
+	    right: 10px;
+	    z-index: 200;
+	    cursor: pointer;
+	    background: #333;
+	    padding: 8px 12px;
+	    border-radius: 6px;
+	    border: 1px solid #555;
+	">
+	⚙ 設定
+	</div>
+<div id="settingsMenu" style="
+    position: fixed;
+    top: 50px;
+    right: 10px;
+    z-index: 200;
+    background: #222;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #555;
+    display: none;
+">
+音量<br>
+<input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.2">
+</div>
+    <div id="lobbyScreen" class="screen-overlay">
+        <h1 style="color: #e67e22; font-size:40px;">BATTLE OTHELLO</h1>
+        <div id="modeSelect">
+            <button class="lobby-btn" style="background:#8e44ad;" onclick="startCpuGame()">CPU対戦 (ソロ)</button>
+            <div style="margin: 10px; color: #555;">- または -</div>
+            <button class="lobby-btn" onclick="showOnlineMenu()">オンライン対戦</button>
+        </div>
+        <div id="onlineMenu" style="display:none; text-align:center;">
+            <button class="lobby-btn" onclick="initHost()">部屋を作る (ホスト)</button>
+            <div style="margin: 10px; color: #555;">- または -</div>
+            <input type="text" id="joinInput" class="lobby-input" placeholder="ホストのIDを入力">
+            <button class="lobby-btn" style="background: #3498db;" onclick="initJoin()">部屋に入る (参加)</button>
+            <br><button onclick="location.reload()" style="background:none; border:none; color:#555; cursor:pointer;">&lt; 戻る</button>
+        </div>
+        <div id="connectionStatus"></div>
+    </div>
+
+<div id="startScreen" class="screen-overlay">
+    <img src="title.jpg" style="max-width: 80%; margin-bottom: 20px;">
+
+<div style="
+    width:400px;
+    font-size:12px;
+    color:#ccc;
+    text-align:left;
+    margin-bottom:20px;
+    background:rgba(0,0,0,0.6);
+    padding:12px;
+    border-radius:10px;
+    border:1px solid #555;
+">
+【操作方法】<br>
+・マスをクリックして駒を置く<br>
+・ゲージMAXでスキル使用可能<br>
+・強奪：駒をクリックで奪う<br>
+・破壊：駒をクリックで破壊（HP消費）<br>
+・ギャンブル：勝てばボーナス<br>
+・薬草：HP回復（1回のみ）<br>
+・HP0でフェニックス発動
+</div>    
+
+    <button onclick="goToLobby()" style="padding:15px 30px; font-size:20px; cursor:pointer; background:#e67e22; color:white; border:none; border-radius:5px; font-family: Meiryo;">GAME START</button>
+</div>
+
+    <div id="resultScreen">
+        <div class="result-box">
+            <div class="winner-text" id="winnerText">WINNER!</div>
+            <table id="resultTable">
+                <tr><th>項目</th><th>P1 (黒)</th><th>P2 (白)</th></tr>
+                <tr><td>総ダメージ</td><td id="resDmg1">0</td><td id="resDmg2">0</td></tr>
+                <tr><td>スキル使用数</td><td id="resSkill1">0</td><td id="resSkill2">0</td></tr>
+            </table>
+            <div style="margin-top:10px; color:#aaa;">総ターン数: <span id="resTurns">0</span></div>
+            <br>
+            <button class="lobby-btn" style="width:100%; font-size:16px;" onclick="location.reload()">タイトルに戻る</button>
+        </div>
+    </div>
+
+    <div id="burstOverlay"><div class="burst-text">ULTIMATE<br>REVERSAL</div></div>
+    <div id="overlayLayer" class="overlay-dim"><div id="overlayContent" style="width: 100%;"></div></div>
+
+    <div id="toolArea">
+        <div id="itemMenu"><div id="itemHerb" class="item-row" onclick="useHerb()"><span>🌿 薬草</span><span>HP+300 / ターン消費</span></div></div>
+        <button id="toolBtn" onclick="toggleToolMenu()">道具</button>
+    </div>
+
+    <h1>⚡ DEATH OTHELLO ⚡</h1>    
+    <div class="hud">
+        <div id="ultimateContainer"><div class="ult-label">ULTIMATE GAUGE</div><div class="ult-slots"><div id="ult1" class="ult-slot"></div><div id="ult2" class="ult-slot"></div><div id="ult3" class="ult-slot"></div></div></div>
+
+        <div id="p1Stats" class="player-stats active-turn">
+            <div>PLAYER 1 (BLACK)</div>
+            <div style="font-size:12px;">HP: <span id="hpBlack">1000</span></div>
+            <div class="bar-container"><div id="hpBlackBar" class="hp-bar" style="background:#e74c3c; width:100%;"></div></div>
+            <div class="skill-info"><span>SKILL</span><span id="chargeVal">0/3</span></div>
+            <div class="bar-container"><div id="chargeBar" class="charge-bar" style="background:#f39c12;"></div></div>
+            <button id="destroyBtn1" class="ability-btn destroy-btn" onclick="toggleDestroy(1)">💣 破壊 (-100HP)</button>
+            <button id="gambleBtn1" class="ability-btn gamble-btn" onclick="startGamble(1)">🎲 ギャンブル</button>
+            <button id="uselessDiceBtn1" class="useless-dice-btn" onclick="rollMeaninglessDice(1)">🎲 謎のサイコロ</button>
+            <div style="margin-top:auto;">駒: <span id="scoreBlack">2</span></div>
+        </div>
+        
+        <div id="p2Stats" class="player-stats">
+            <div>PLAYER 2 (WHITE)</div>
+            <div style="font-size:12px;">HP: <span id="hpWhite">1000</span></div>
+            <div class="bar-container"><div id="hpWhiteBar" class="hp-bar" style="background:#3498db; width:100%;"></div></div>
+            <div class="skill-info"><span>SKILL</span><span id="whiteChargeVal">0/3</span></div>
+            <div class="bar-container"><div id="whiteChargeBar" class="charge-bar" style="background:#3498db;"></div></div>
+            <button id="destroyBtn2" class="ability-btn destroy-btn" onclick="toggleDestroy(2)">💣 破壊 (-100HP)</button>
+            <button id="gambleBtn2" class="ability-btn gamble-btn" onclick="startGamble(2)">🎲 ギャンブル</button>
+            <button id="uselessDiceBtn2" class="useless-dice-btn" onclick="rollMeaninglessDice(2)">🎲 謎のサイコロ</button>
+            <div style="margin-top:auto;">駒: <span id="scoreWhite">2</span></div>
+        </div>
+    </div>
+
+    <div class="board-wrapper">
+        <div class="coord-top"><div>A</div><div>B</div><div>C</div><div>D</div><div>E</div><div>F</div><div>G</div><div>H</div></div>
+        <div class="coord-left"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div></div>
+        <div id="board"></div>
+    </div>
+
+    <div id="gameLog" style="height:60px; overflow-y:auto; width:480px; font-size:12px; border-top:1px solid #555; margin-top:10px; text-align:center; color:#ccc;"></div>
+    
+    <script>
+        const INITIAL_HP = 1000;
+        const PHOENIX_HP = 500;
+        const DAMAGE_PER_FLIP = 50;
+        const HEAL_PER_BLUE = 100;
+        const HERB_HEAL = 300;
+        const BLACK=1, WHITE=2, BLUE=3, EMPTY=0;
+
+        let gameMode = 'cpu';
+        let peer = null, conn = null;
+        let myPlayerId = BLACK;
+
+        let board=[], hp={}, currentPlayer=1, isGameOver=false;
+	let volume = 0.2;
+	let prevCharge = { [BLACK]: 0, [WHITE]: 0 };
+        let charges = { [BLACK]: 0, [WHITE]: 0 };
+        let maxCharges = { [BLACK]: 3, [WHITE]: 3 };
+        let destroyOwner = 0, gambleOwner = 0;
+        let phoenixModeUsed=false, ultimateCharge=0;
+        let isDestroyMode=false, destroyCount=0, isDestroyRewardMode=false;
+        let itemUsed={[BLACK]:false, [WHITE]:false};
+        
+        // Stats
+        let stats = { turns: 0, damage: { [BLACK]:0, [WHITE]:0 }, skills: { [BLACK]:0, [WHITE]:0 } };
+        let gameHistory=[], audioCtx;
+
+        function goToLobby() {
+            document.getElementById('startScreen').style.display='none';
+            initAudio();
+        }
+
+        function showOnlineMenu() { document.getElementById('modeSelect').style.display='none'; document.getElementById('onlineMenu').style.display='block'; }
+        function startCpuGame() { 
+            gameMode = 'cpu'; myPlayerId = BLACK; 
+            document.getElementById('lobbyScreen').style.display = 'none'; 
+            initGame(); 
+        }
+
+        function initHost() {
+            gameMode = 'online'; document.getElementById('connectionStatus').innerText = "IDを生成中...";
+            peer = new Peer();
+            peer.on('open', (id) => {
+                document.getElementById('onlineMenu').innerHTML = `
+                    <div style="font-size:20px; color:cyan;">あなたのID:</div>
+                    <div style="font-size:30px; font-weight:bold; background:#333; padding:10px; user-select:all;">${id}</div>
+                    <p style="font-size:12px;">※通信環境により時間がかかる場合があります</p>
+                    <div style="color:yellow;">接続待ち...</div>
+                    <br><button class="lobby-btn" style="background:#555;" onclick="location.reload()">タイトルに戻る</button>`;
+                myPlayerId = BLACK;
+            });
+            peer.on('connection', (c) => {
+                conn = c; setupConnection(); document.getElementById('lobbyScreen').style.display = 'none';
+                initGame(); setTimeout(() => syncData(), 500);
+            });
+        }
+        function initJoin() {
+            gameMode = 'online';
+            const hostId = document.getElementById('joinInput').value;
+            if(!hostId) return alert("IDを入力してください");
+            document.getElementById('connectionStatus').innerText = "接続中...";
+            peer = new Peer();
+            peer.on('open', (id) => { conn = peer.connect(hostId); myPlayerId = WHITE; setupConnection(); });
+            peer.on('error', (err) => alert("接続エラー: IDを確認してください"));
+        }
+        function setupConnection() {
+            conn.on('open', () => {
+                document.getElementById('lobbyScreen').style.display = 'none';
+                if(myPlayerId === WHITE) updateUI();
+            });
+            conn.on('data', (data) => handleNetworkData(data));
+        }
+        function syncData() {
+            if(gameMode !== 'online' || !conn) return;
+            const state = { type: 'sync', board, hp, currentPlayer, charges, maxCharges, destroyOwner, gambleOwner, phoenixModeUsed, ultimateCharge, isDestroyMode, destroyCount, isDestroyRewardMode, itemUsed, isGameOver, stats };
+            conn.send(state);
+        }
+        function handleNetworkData(data) {
+            if(data.type === 'sync') {
+                board = data.board; hp = data.hp; currentPlayer = data.currentPlayer;
+                charges = data.charges; maxCharges = data.maxCharges; destroyOwner = data.destroyOwner;
+                gambleOwner = data.gambleOwner; phoenixModeUsed = data.phoenixModeUsed; ultimateCharge = data.ultimateCharge;
+                isDestroyMode = data.isDestroyMode; destroyCount = data.destroyCount; isDestroyRewardMode = data.isDestroyRewardMode;
+                itemUsed = data.itemUsed; isGameOver = data.isGameOver; stats = data.stats;
+                updateUI(); renderBoard();
+                if(isGameOver) showResultScreen();
+            } else if (data.type === 'log') log(data.msg);
+            else if (data.type === 'effect') {
+                playSE(data.sound);
+                if(data.visual === 'damage') showDamagePopup(data.val, data.target, data.self, data.heal);
+                if(data.visual === 'flyaway') triggerFlyawayVisual(data.target);
+                if(data.visual === 'burst') triggerBurstVisual();
+                if(data.visual === 'alert') alert(data.msg);
+            }
+        }
+        function sendLog(msg) { if(conn) conn.send({ type: 'log', msg: msg }); }
+        function sendEffect(sound, visual, params={}) { if(conn) conn.send({ type: 'effect', sound, visual, ...params }); }
+
+        function initAudio() { try{const A=window.AudioContext||window.webkitAudioContext;audioCtx=new A();}catch(e){} }
+        function playTone(f,t,d,v=0.1) {
+            if(!audioCtx)return; const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+            o.type=t;o.frequency.setValueAtTime(f,audioCtx.currentTime); g.gain.setValueAtTime(v * volume, audioCtx.currentTime);
+		g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+d); o.connect(g);g.connect(audioCtx.destination); o.start();o.stop(audioCtx.currentTime+d);
+        }
+        function playSE(k) {
+            if(!audioCtx)return;
+            switch(k){
+                case 'place': playTone(400,'square',0.1); break;
+                case 'blue': playTone(1200,'sine',0.1,0.2); playTone(200,'sawtooth',0.3,0.2); break;
+                case 'damage': playTone(100,'sawtooth',0.2,0.3); playTone(50,'square',0.2,0.3); break;
+                case 'heal': playTone(600,'sine',0.3,0.1); playTone(900,'sine',0.5,0.1); break;
+                case 'cheat': playTone(1000,'sine',0.5,0.1); break;
+                case 'dice': playTone(800,'triangle',0.05,0.2); break;
+                case 'destroy': playTone(60,'sawtooth',0.4,0.4); break;
+                case 'flyaway': playTone(800,'sawtooth',0.1,0.2); setTimeout(()=>playTone(400,'sawtooth',0.5,0.2), 100); break;
+                case 'burst': playTone(50,'sawtooth',2,0.5); for(let i=0;i<10;i++) setTimeout(()=>playTone(200+i*100,'sawtooth',0.1,0.3), i*100); break;
+                case 'useless': playTone(880,'triangle',0.1,0.1); setTimeout(()=>playTone(1760,'triangle',0.1,0.1),150); break;
+                case 'reversal': playTone(200,'square',0.1,0.3); setTimeout(()=>playTone(400,'square',0.1,0.3),100); setTimeout(()=>playTone(800,'square',0.5,0.3),200); break;
+                case 'win': playTone(600,'square',0.1,0.1); setTimeout(()=>playTone(800,'square',0.2,0.1),100); break;
+                case 'coin': playTone(1500,'sine',0.8,0.1); break;
+		case 'skillReady':
+    			playTone(1200,'square',0.2,0.2);
+   			 setTimeout(()=>playTone(1600,'square',0.2,0.2),100);
+  			  break;
+   	     }
+        }
+
+        function initGame() {
+            board = Array(8).fill().map(()=>Array(8).fill(EMPTY));
+            board[3][3]=WHITE; board[3][4]=BLACK; board[4][3]=BLACK; board[4][4]=WHITE;
+            currentPlayer = BLACK; hp[BLACK]=INITIAL_HP; hp[WHITE]=INITIAL_HP;
+            charges={ [BLACK]:0, [WHITE]:0 }; maxCharges={ [BLACK]:3, [WHITE]:3 };
+            destroyOwner=0; gambleOwner=0; phoenixModeUsed=false; ultimateCharge=0;
+            isDestroyMode=false; destroyCount=0; isDestroyRewardMode=false;
+            itemUsed={[BLACK]:false, [WHITE]:false};
+            stats = { turns: 0, damage: { [BLACK]:0, [WHITE]:0 }, skills: { [BLACK]:0, [WHITE]:0 } };
+            
+            document.getElementById('ultimateContainer').style.display='none';
+            document.getElementById('p1Stats').classList.remove('phoenix-active');
+            document.getElementById('p2Stats').classList.remove('phoenix-active');
+            document.getElementById('resultScreen').style.display='none';
+            
+            updateUI(); renderBoard(); log("バトル開始！");
+        }
+
+        function toggleToolMenu() {
+            const menu=document.getElementById('itemMenu'); menu.style.display=(menu.style.display==='block')?'none':'block';
+            const row=document.getElementById('itemHerb');
+            if(itemUsed[myPlayerId]){ row.classList.add('item-disabled'); row.title="使用済み"; } else { row.classList.remove('item-disabled'); row.title=""; }
+        }
+
+        function useHerb() {
+            if(isGameOver || currentPlayer!==myPlayerId || currentPlayer===BLUE) return;
+            if(itemUsed[currentPlayer]){ log("道具は一度しか使えません"); return; }
+            playSE('heal'); sendEffect('heal', null);
+            hp[currentPlayer]+=HERB_HEAL; itemUsed[currentPlayer]=true;
+            showDamagePopup(HERB_HEAL,currentPlayer,true,true);
+            sendEffect('heal', 'damage', {val:HERB_HEAL, target:currentPlayer, self:true, heal:true});
+            log(`${currentPlayer===BLACK?"P1(黒)":"P2(白)"}は薬草を使った！ HP+${HERB_HEAL}`);
+            document.getElementById('itemMenu').style.display='none'; 
+            nextTurn();
+        }
+
+        function rollMeaninglessDice(p) {
+            if(p !== myPlayerId && gameMode === 'online') return;
+            playSE('useless');
+            const val = Math.floor(Math.random()*6)+1;
+            const pName = (p===BLACK) ? "P1(黒)" : "P2(白)";
+            const msg = `${pName}のサイコロ: [ ${val} ]\n(意味はない)`;
+            alert(msg); log(`${pName}は意味のないサイコロを振った: ${val}`); sendEffect('useless', 'alert', {msg});
+        }
+
+        function handleClick(r, c) {
+            if(isGameOver || isGameOver==='rewinding' || currentPlayer===BLUE) return;
+            if(gameMode === 'online' && currentPlayer !== myPlayerId) return;
+            if(gameMode === 'cpu' && currentPlayer !== BLACK) return; 
+            handleMoveLogic(r, c, currentPlayer);
+        }
+
+        function handleMoveLogic(r, c, player) {
+            if(isDestroyMode || isDestroyRewardMode) {
+                if(board[r][c]!==EMPTY) {
+                    if(isDestroyMode) {
+                        hp[player] -= 100; destroyPiece(r, c, true); isDestroyMode = false;
+                        stats.skills[player]++;
+                        nextTurn();
+                    } else {
+                        destroyPiece(r, c, false); destroyCount--;
+                        if(destroyCount <= 0) { log("破壊ボーナス終了"); isDestroyRewardMode = false; nextTurn(); }
+                        else log(`残り破壊回数: ${destroyCount}`);
+                    }
+                    syncData();
+                } return;
+            }
+            const isSkill = (board[r][c]!==EMPTY && charges[player] >= maxCharges[player]);
+            if(board[r][c] === EMPTY) {
+                const f = getFlips(r, c, player);
+                if(f.length > 0) {
+                    charges[player] = Math.min(charges[player]+1, maxCharges[player]);
+                    playSE('place'); sendEffect('place', null); executeMove(r, c, player, f, false);
+                } else {
+                    if(player === myPlayerId) log("そこには置けません");
+                }
+            } else if(isSkill) {
+                playSE('cheat'); sendEffect('cheat', null);
+                charges[player] = 0; board[r][c] = player; 
+                stats.skills[player]++;
+                log(`⚡ スキル発動: ${player===BLACK?"P1":"P2"}が強制奪取！`);
+                executeMove(r, c, player, getFlips(r, c, player), true);
+            }
+        }
+
+        function executeMove(r, c, p, flips, overwrite=false) {
+            if(!overwrite) board[r][c] = p;
+            let blueHeal=0;
+            flips.forEach(x => {
+                if(board[x.r][x.c]===BLUE) { blueHeal+=HEAL_PER_BLUE; ultimateCharge++; }
+                board[x.r][x.c]=p;
+            });
+            if(blueHeal>0){ hp[p]+=blueHeal; playSE('heal'); showDamagePopup(blueHeal,p,true,true); sendEffect('heal', 'damage', {val:blueHeal, target:p, self:true, heal:true}); }
+            if(ultimateCharge>=3) triggerUltimateBurst();
+
+            const dmg = flips.length * DAMAGE_PER_FLIP;
+            const opp = (p===BLACK) ? WHITE : BLACK;
+            if(dmg>0) { 
+                playSE('damage'); applyDamage(opp, dmg); showDamagePopup(dmg, opp); 
+                sendEffect('damage', 'damage', {val:dmg, target:opp});
+                stats.damage[p] += dmg;
+            }
+
+            if(isGameOver!=='rewinding'){
+                if(hp[WHITE]<=0 && hp[BLACK]<=0 && phoenixModeUsed) { endGame(BLACK); return; }
+                if(hp[WHITE]<=0 && phoenixModeUsed) { endGame(BLACK); return; }
+                if(hp[BLACK]<=0 && phoenixModeUsed) { endGame(WHITE); return; }
+                nextTurn();
+            } else syncData();
+        }
+
+        function nextTurn() {
+            stats.turns++;
+            if(currentPlayer===BLACK) currentPlayer=WHITE;
+            else if(currentPlayer===WHITE) currentPlayer=(phoenixModeUsed?BLUE:BLACK);
+            else if(currentPlayer===BLUE) currentPlayer=BLACK;
+            
+            checkPass();
+            syncData(); 
+            updateUI(); 
+            renderBoard(); 
+
+            if(!isGameOver) {
+                if(gameMode === 'cpu' && currentPlayer === WHITE) {
+                    setTimeout(playCpuTurn, 1000);
+                } else if(currentPlayer === BLUE && (gameMode === 'cpu' || isHost)) {
+                    setTimeout(playBlueTurn, 800);
+                }
+            }
+        }
+
+        function playCpuTurn() {
+            if(isGameOver || currentPlayer !== WHITE) return;
+            if(phoenixModeUsed && destroyOwner === 0) return; 
+
+            if(destroyOwner === WHITE && Math.random() < 0.3 && hp[WHITE] > 200) {
+                 const targets = getAllPieces(BLACK);
+                 if(targets.length > 0) { const t = targets[Math.floor(Math.random()*targets.length)]; toggleDestroy(WHITE); setTimeout(() => handleMoveLogic(t.r, t.c, WHITE), 500); return; }
+            }
+            if(gambleOwner === WHITE && hp[WHITE] < 500 && Math.random() < 0.5) { startGamble(WHITE); return; }
+            
+            const validMoves = getAllValidMoves(WHITE);
+            const skillMoves = (charges[WHITE] >= maxCharges[WHITE]) ? getAllPieces(BLACK) : [];
+            let bestMove = null;
+            const corners = [{r:0,c:0},{r:0,c:7},{r:7,c:0},{r:7,c:7}];
+            for(let m of validMoves) if(corners.some(cr => cr.r===m.r && cr.c===m.c)) { bestMove = m; break; }
+            if(!bestMove && skillMoves.length > 0 && Math.random() < 0.7) bestMove = skillMoves[Math.floor(Math.random()*skillMoves.length)];
+            if(!bestMove && validMoves.length > 0) bestMove = validMoves[Math.floor(Math.random()*validMoves.length)];
+            
+            if(bestMove) handleMoveLogic(bestMove.r, bestMove.c, WHITE); 
+            else nextTurn(); 
+        }
+        function getAllValidMoves(p) { let m=[]; for(let r=0;r<8;r++)for(let c=0;c<8;c++) if(board[r][c]===EMPTY && getFlips(r,c,p).length>0) m.push({r,c}); return m; }
+        function getAllPieces(p) { let t=[]; for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c]===p)t.push({r,c}); return t; }
+
+        function playBlueTurn() {
+            if(isGameOver)return; let s=0,r,c,v=false;
+            while(!v&&s<100){ r=Math.floor(Math.random()*8); c=Math.floor(Math.random()*8); if(board[r][c]!==BLUE)v=true; s++; }
+            board[r][c]=BLUE; playSE('blue'); sendEffect('blue', null); log(`青い駒が乱入: (${getCoord(r,c)})`); nextTurn();
+        }
+
+        function startGamble(pid) {
+            if(gameMode==='online' && (currentPlayer !== pid || gambleOwner !== pid || pid !== myPlayerId)) {
+                if(pid===myPlayerId) log("今はギャンブルできません(相手のターン)");
+                return;
+            }
+            if(gameMode==='cpu' && pid === BLACK && currentPlayer !== BLACK) {
+                log("今はギャンブルできません(CPUのターン)");
+                return;
+            }
+            if(gambleOwner !== pid) { log("権限がありません"); return; }
+
+            sendLog("ギャンブル開始...");
+            const ol=document.getElementById('overlayLayer'); const ct=document.getElementById('overlayContent');
+            ol.style.display='flex'; ct.innerHTML=`<div class="big-text">チンチロ勝負</div>`;
+            setTimeout(()=>{
+                playSE('dice'); sendEffect('dice', null); const d1 = rollDice(); const s1 = calcScore(d1);
+                ct.innerHTML += `<div style="font-size:30px;color:#f1c40f;">あなた: ${d1.join('-')}</div>`;
+                setTimeout(()=>{
+                    playSE('dice'); sendEffect('dice', null); const d2 = rollDice(); const s2 = calcScore(d2);
+                    ct.innerHTML += `<div style="font-size:30px;color:#888;">相手: ${d2.join('-')}</div>`;
+                    setTimeout(()=>{
+                        if(s1 > s2) {
+                            playSE('win'); sendEffect('win', null); ct.innerHTML += `<div class="big-text" style="color:yellow;">勝利! 破壊権x2 獲得</div>`;
+                            stats.skills[pid]++;
+                            setTimeout(() => { ol.style.display='none'; destroyCount = 2; isDestroyRewardMode = true; log("ギャンブル勝利！破壊ボーナス発動！"); updateUI(); renderBoard(); syncData(); if(gameMode==='cpu' && pid===WHITE) cpuDestroyReward(); }, 1500);
+                        } else {
+                            ct.innerHTML += `<div class="big-text" style="color:red;">敗北...</div>`;
+                            setTimeout(() => { ol.style.display='none'; exePunish(pid); }, 1500);
+                        }
+                    }, 800);
+                }, 800);
+            }, 500);
+        }
+        function cpuDestroyReward() {
+            let count = 2; let interval = setInterval(() => {
+                if(count <= 0) { clearInterval(interval); return; }
+                const targets = getAllPieces(BLACK);
+                if(targets.length > 0) { const t = targets[Math.floor(Math.random()*targets.length)]; handleMoveLogic(t.r, t.c, WHITE); }
+                count--;
+            }, 1000);
+        }
+
+        function exePunish(pid) {
+            let t=getAllPieces(pid);
+            if(t.length>0){
+                const p=t[Math.floor(Math.random()*t.length)];
+                log(`ペナルティ: 駒(${getCoord(p.r,p.c)})が消滅！`);
+                triggerFlyawayVisual(p); sendEffect('flyaway', 'flyaway', {target: p});
+                // Fix: Immediately remove for logic, keep visual
+                board[p.r][p.c]=EMPTY;
+                renderBoard(); // static piece gone, flying piece remains
+                
+                setTimeout(()=>{ 
+                    applyDamage(pid, 50); 
+                    nextTurn(); 
+                },1500);
+            } else { log("消滅する駒がありません"); nextTurn(); }
+        }
+        function triggerFlyawayVisual(p) {
+            playSE('flyaway');
+            // Create dummy because real piece might be removed immediately from board
+            const rect = document.getElementById('board').children[p.r*8+p.c].getBoundingClientRect();
+            const fly = document.createElement('div');
+            fly.className = `piece flying-piece ${board[p.r][p.c]===BLACK?'black-piece':'white-piece'}`; // grab color before empty
+            // If empty (async issue), fallback
+            if(board[p.r][p.c] === EMPTY) fly.className = `piece flying-piece ${(p.r+p.c)%2==0?'white-piece':'black-piece'}`; 
+            
+            fly.style.left = rect.left + 'px'; fly.style.top = rect.top + 'px';
+            document.body.appendChild(fly);
+            setTimeout(()=>fly.remove(), 1500);
+        }
+
+        function triggerUltimateBurst() {
+            ultimateCharge=0; triggerBurstVisual(); sendEffect('reversal', 'burst'); log("🌌 アルティメット大逆転！");
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) { if(board[r][c]===BLACK) board[r][c]=WHITE; else if(board[r][c]===WHITE) board[r][c]=BLACK; }
+        }
+        function triggerBurstVisual() {
+            playSE('reversal'); playSE('burst');
+            const ol=document.getElementById('burstOverlay'); ol.style.animation='none'; ol.offsetHeight; ol.style.animation='burstAnim 3s forwards'; 
+            ol.querySelector('.burst-text').style.animation='textZoom 3s forwards';
+        }
+
+        function toggleDestroy(pid) {
+            if(gameMode==='online' && (currentPlayer!==pid || destroyOwner!==pid || pid!==myPlayerId)) {
+                if(pid===myPlayerId) log("今は破壊できません(相手のターン/権限なし)"); return;
+            }
+            if(gameMode==='cpu' && pid===BLACK && currentPlayer!==BLACK) { log("今は破壊できません(CPUのターン)"); return; }
+            if(destroyOwner !== pid) { log("権限がありません"); return; }
+            
+            isDestroyMode = !isDestroyMode; log(isDestroyMode ? "破壊モード: 対象を選択 (HP-100)" : "破壊モード解除"); updateUI(); renderBoard();
+        }
+        function destroyPiece(r,c,s){ 
+            playSE('destroy'); sendEffect('destroy', null);
+            const p=document.createElement('div'); p.textContent="💥"; p.className='damage-popup'; p.style.left=(c*52+20)+'px'; p.style.top=(r*52+20)+'px'; 
+            document.getElementById('board').appendChild(p); setTimeout(()=>p.remove(),1000); 
+            if(s) { showDamagePopup(100,currentPlayer,true); sendEffect('destroy', 'damage', {val:100, target:currentPlayer, self:true}); }
+            board[r][c]=EMPTY; 
+        }
+        function applyDamage(t,v){ 
+            hp[t]-=v; 
+            if((hp[BLACK]<=0 || hp[WHITE]<=0) && !phoenixModeUsed) {
+                activatePhoenix((hp[BLACK]<=0)?BLACK:WHITE);
+            }
+            else if(hp[t]<0) hp[t]=0; 
+        }
+        function showDamagePopup(v,t,s=false,h=false){
+            const hud = document.getElementById(t===BLACK ? 'p1Stats' : 'p2Stats');
+            const rect = hud.getBoundingClientRect();
+            const p=document.createElement('div'); p.textContent=(h?"+":"-")+v; p.style.color=h?"#2ecc71":(s?"#8e44ad":"red");
+            p.style.position='fixed'; p.style.fontSize='40px'; p.style.fontWeight='bold'; p.style.zIndex=200;
+            p.style.top = (rect.top + 50) + 'px'; p.style.left = (rect.left + rect.width/2 - 20) + 'px';
+            p.animate([{transform:'translateY(0)',opacity:1},{transform:'translateY(-50px)',opacity:0}],1000);
+            document.body.appendChild(p); setTimeout(()=>p.remove(),1000);
+        }
+
+        function activatePhoenix(loser){
+            const winner = (loser===BLACK) ? WHITE : BLACK;
+            phoenixModeUsed=true; 
+            const msg = `🔥 フェニックスモード発動！互いにHP500で再開！`;
+            log(msg); alert(msg); sendEffect('alert', 'alert', {msg});
+            
+            // フラグの強制リセット（重要）
+            isDestroyMode = false; isDestroyRewardMode = false; destroyCount = 0;
+
+            hp[BLACK]=PHOENIX_HP; hp[WHITE]=PHOENIX_HP;
+            // No board revert logic - keeping current state
+            currentPlayer=loser; // 死んだ側から再開
+            
+            maxCharges[BLACK]=5; maxCharges[WHITE]=5; charges[BLACK]=0; charges[WHITE]=0;
+            destroyOwner=loser; gambleOwner=winner;
+            
+            updateUI(); renderBoard(); syncData();
+            
+            // CPU再開処理
+            if(gameMode === 'cpu' && currentPlayer === WHITE) setTimeout(playCpuTurn, 2000);
+        }
+
+        function updateUI() {
+            document.getElementById('hpBlack').textContent=hp[BLACK]; document.getElementById('hpWhite').textContent=hp[WHITE];
+            document.getElementById('hpBlackBar').style.width=(hp[BLACK]/INITIAL_HP*100)+'%'; document.getElementById('hpWhiteBar').style.width=(hp[WHITE]/INITIAL_HP*100)+'%';
+            let b=0,w=0; board.flat().forEach(v=>{if(v===BLACK)b++;if(v===WHITE)w++;});
+            document.getElementById('scoreBlack').textContent=b; document.getElementById('scoreWhite').textContent=w;
+		const p1 = document.getElementById('p1Stats'),
+		      p2 = document.getElementById('p2Stats');
+            p1.classList.toggle('active-turn', currentPlayer===BLACK); p2.classList.toggle('active-turn', currentPlayer===WHITE);
+            if(currentPlayer===BLUE){ p1.classList.remove('active-turn'); p2.classList.remove('active-turn'); document.getElementById('board').style.borderColor='#00ffff'; }
+            else document.getElementById('board').style.borderColor='#444';
+            if(phoenixModeUsed) {
+                if(destroyOwner===BLACK) document.getElementById('p1Stats').classList.add('phoenix-active');
+                if(destroyOwner===WHITE) document.getElementById('p2Stats').classList.add('phoenix-active');
+            }
+            document.getElementById('chargeVal').textContent=`${charges[BLACK]}/${maxCharges[BLACK]}`; 
+            document.getElementById('chargeBar').style.width=Math.min(100,(charges[BLACK]/maxCharges[BLACK])*100)+'%';
+            document.getElementById('whiteChargeVal').textContent=`${charges[WHITE]}/${maxCharges[WHITE]}`; 
+            document.getElementById('whiteChargeBar').style.width=Math.min(100,(charges[WHITE]/maxCharges[WHITE])*100)+'%';
+
+            const isP1 = (myPlayerId === BLACK || gameMode === 'cpu');
+            const isP2 = (myPlayerId === WHITE);
+            const showP2Btns = (isP2 || gameMode === 'cpu');
+            
+            document.getElementById('destroyBtn1').style.display = (destroyOwner===BLACK && isP1)?'block':'none';
+            document.getElementById('gambleBtn1').style.display = (gambleOwner===BLACK && isP1)?'block':'none';
+            document.getElementById('uselessDiceBtn1').style.display = (hp[BLACK]<=500 && isP1)?'block':'none';
+
+            document.getElementById('destroyBtn2').style.display = (destroyOwner===WHITE && showP2Btns)?'block':'none';
+            document.getElementById('gambleBtn2').style.display = (gambleOwner===WHITE && showP2Btns)?'block':'none';
+            document.getElementById('uselessDiceBtn2').style.display = (hp[WHITE]<=500 && showP2Btns)?'block':'none';
+            
+            if(gameMode === 'cpu') {
+                document.getElementById('destroyBtn2').classList.add('btn-disabled');
+                document.getElementById('gambleBtn2').classList.add('btn-disabled');
+                document.getElementById('uselessDiceBtn2').classList.add('btn-disabled');
+            } else {
+                document.getElementById('destroyBtn2').classList.remove('btn-disabled');
+                document.getElementById('gambleBtn2').classList.remove('btn-disabled');
+                document.getElementById('uselessDiceBtn2').classList.remove('btn-disabled');
+            }
+            document.getElementById('destroyBtn1').classList.toggle('active', isDestroyMode && currentPlayer===BLACK);
+            document.getElementById('destroyBtn2').classList.toggle('active', isDestroyMode && currentPlayer===WHITE);
+            if(phoenixModeUsed) document.getElementById('ultimateContainer').style.display='block';
+            for(let i=1;i<=3;i++){
+		const el=document.getElementById('ult'+i);
+		if(i<=ultimateCharge)el.classList.add('ult-filled');
+		else el.classList.remove('ult-filled');
+		}
+   	 // ←ここに貼る！！
+   	 if (charges[BLACK] >= maxCharges[BLACK] && prevCharge[BLACK] < maxCharges[BLACK]) {
+   	     playSE('skillReady');
+  	  }
+  	  if (charges[WHITE] >= maxCharges[WHITE] && prevCharge[WHITE] < maxCharges[WHITE]) {
+ 	       playSE('skillReady');
+ 	   }
+
+    prevCharge[BLACK] = charges[BLACK];
+    prevCharge[WHITE] = charges[WHITE];
+        }
+        function renderBoard() {
+            const el=document.getElementById('board'); el.innerHTML='';
+            el.className=(isDestroyMode||isDestroyRewardMode)?'destroy-mode':'';
+            for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+                const d=document.createElement('div'); d.className='cell'; d.onclick=()=>handleClick(r,c);
+                if(board[r][c]===BLACK) d.innerHTML='<div class="piece black-piece"></div>';
+                else if(board[r][c]===WHITE) d.innerHTML='<div class="piece white-piece"></div>';
+                else if(board[r][c]===BLUE) d.innerHTML='<div class="piece blue-piece"></div>';
+                el.appendChild(d);
+            }
+        }
+        function getFlips(r,c,p){
+            const d=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]; let res=[]; const opp=p===BLACK?WHITE:BLACK;
+            for(let [dr,dc] of d){
+                let tmp=[], nr=r+dr, nc=c+dc;
+                while(nr>=0&&nr<8&&nc>=0&&nc<8 && (board[nr][nc]===opp || board[nr][nc]===BLUE)){ tmp.push({r:nr,c:nc}); nr+=dr; nc+=dc; }
+                if(nr>=0&&nr<8&&nc>=0&&nc<8 && board[nr][nc]===p && tmp.length>0) res.push(...tmp);
+            } return res;
+        }
+        function checkPass(){
+            if(!canMove(currentPlayer) && currentPlayer!==BLUE){
+                const next=(currentPlayer===BLACK)?WHITE:(phoenixModeUsed?BLUE:BLACK);
+                log(`${currentPlayer===BLACK?"P1":"P2"} パス！`); currentPlayer=next; 
+                if(currentPlayer===BLUE && (gameMode==='cpu' || isHost)) setTimeout(playBlueTurn,800);
+            }
+        }
+        function canMove(p){
+            for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+                if(board[r][c]===EMPTY && getFlips(r,c,p).length) return true;
+                if(charges[p]>=maxCharges[p] && board[r][c]!==p && board[r][c]!==EMPTY) return true; 
+            } return false;
+        }
+        function endGame(w){ 
+            isGameOver=true; 
+            // Result Screen logic
+            document.getElementById('winnerText').textContent = (w===BLACK ? "PLAYER 1 WINS!" : "PLAYER 2 WINS!");
+            document.getElementById('winnerText').style.color = (w===BLACK ? "red" : "cyan");
+            
+            document.getElementById('resDmg1').textContent = stats.damage[BLACK];
+            document.getElementById('resDmg2').textContent = stats.damage[WHITE];
+            document.getElementById('resSkill1').textContent = stats.skills[BLACK];
+            document.getElementById('resSkill2').textContent = stats.skills[WHITE];
+            document.getElementById('resTurns').textContent = stats.turns;
+            
+            // Wait for piece to render then show screen
+            setTimeout(() => {
+                document.getElementById('resultScreen').style.display='flex';
+            }, 500);
+            syncData(); 
+        }
+        function log(m){document.getElementById('gameLog').innerHTML=`<div>${m}</div>`+document.getElementById('gameLog').innerHTML;}
+        function getCoord(r,c){ const cols=['A','B','C','D','E','F','G','H']; return cols[c]+(r+1); }
+        function rollDice(){return [1,2,3].map(()=>Math.floor(Math.random()*6)+1);}
+        function calcScore(d){ d.sort((a,b)=>a-b); if(d[0]==1&&d[1]==1&&d[2]==1)return 100; if(d[0]==d[1]&&d[1]==d[2])return 10+d[0]; if(d[0]==4&&d[1]==5&&d[2]==6)return 50; if(d[0]==1&&d[1]==2&&d[2]==3)return -100; if(d[0]==d[1])return d[2]; if(d[1]==d[2])return d[0]; return 0; }
+        
+        function showResultScreen() {
+            // For guest client to show result properly
+            // Re-calc values or trust sync
+            document.getElementById('resDmg1').textContent = stats.damage[BLACK];
+            document.getElementById('resDmg2').textContent = stats.damage[WHITE];
+            document.getElementById('resSkill1').textContent = stats.skills[BLACK];
+            document.getElementById('resSkill2').textContent = stats.skills[WHITE];
+            document.getElementById('resTurns').textContent = stats.turns;
+            document.getElementById('resultScreen').style.display='flex';
+}
+
+// ←ここに置く！！
+document.getElementById('settingsBtn').onclick = () => {
+    const menu = document.getElementById('settingsMenu');
+    menu.style.display = (menu.style.display === 'none') ? 'block' : 'none';
+};
+
+document.getElementById('volumeSlider').oninput = (e) => {
+    volume = parseFloat(e.target.value);
+};
+    </script>
+</body>
+</html>
