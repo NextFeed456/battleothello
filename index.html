@@ -365,9 +365,9 @@
         let stats = { turns: 0, damage: { [BLACK]:0, [WHITE]:0 }, skills: { [BLACK]:0, [WHITE]:0 } };
         let gameHistory=[], audioCtx;
 function goToLobby() {
+
     const input = document.getElementById('playerNameInput');
 
-    // 👇ここ追加
     if(input.value.trim() === ""){
         alert("名前を入力してください");
         return;
@@ -377,8 +377,8 @@ function goToLobby() {
 
     updatePlayerNames();
 
-    document.getElementById('startScreen').style.display='none';
-    document.getElementById('lobbyScreen').style.display='flex';
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('lobbyScreen').style.display = 'flex';
 
     initAudio();
 }
