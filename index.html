@@ -126,7 +126,7 @@
 						 top: 0; left: 0;
 						 width: 100%;
 						 height: 100%;
-						 background: transparent;
+						 background: #111;
 						 display: flex;
 						 flex-direction: column;
 						 justify-content: center;
@@ -194,7 +194,7 @@
 音量<br>
 <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.2">
 </div>
-    <div id="lobbyScreen" class="screen-overlay" style="display:none;">
+    <div id="lobbyScreen" class="screen-overlay">
         <h1 style="color: #e67e22; font-size:40px;">BATTLE OTHELLO</h1>
         <div id="modeSelect">
             <button class="lobby-btn" style="background:#8e44ad;" onclick="startCpuGame()">CPU対戦 (ソロ)</button>
@@ -211,18 +211,19 @@
         <div id="connectionStatus"></div>
     </div>
 
-<div id="startScreen" class="screen-overlay" style="display:none; position: relative; overflow: hidden;">
+<div id="startScreen" class="screen-overlay" style="position: relative; overflow: hidden;">
 
     <!-- 背景 -->
-<img src="title.png" style="
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: -1;
-">
+	<img src="./title.png"
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+    ">
+
     <!-- 🔥 ここが超重要 -->
     <div style="
         position: absolute;
@@ -234,7 +235,6 @@
         flex-direction: column;
         align-items: center;
     ">
-
 
         <input 
             type="text" 
@@ -299,10 +299,9 @@
         <button id="toolBtn" onclick="toggleToolMenu()">道具</button>
     </div>
 
-    <div id="gameScreen" style="display:none;">
-        <div id="ultimateContainer">
-			<div class="ult-label">ULTIMATE GAUGE</div>
-			<div class="ult-slots"><div id="ult1" class="ult-slot"></div><div id="ult2" class="ult-slot"></div><div id="ult3" class="ult-slot"></div></div></div>
+    <h1>⚡ DEATH OTHELLO ⚡</h1>    
+    <div class="hud">
+        <div id="ultimateContainer"><div class="ult-label">ULTIMATE GAUGE</div><div class="ult-slots"><div id="ult1" class="ult-slot"></div><div id="ult2" class="ult-slot"></div><div id="ult3" class="ult-slot"></div></div></div>
 
         <div id="p1Stats" class="player-stats active-turn">
             <div>PLAYER 1 (BLACK)</div>
@@ -366,10 +365,6 @@
         let stats = { turns: 0, damage: { [BLACK]:0, [WHITE]:0 }, skills: { [BLACK]:0, [WHITE]:0 } };
         let gameHistory=[], audioCtx;
 function goToLobby() {
-
-    if (audioCtx && audioCtx.state === "suspended") {
-        audioCtx.resume();
-    }
 
     const input = document.getElementById('playerNameInput');
 
@@ -965,15 +960,12 @@ function startCpuGame() {
     gameMode = 'cpu'; 
     myPlayerId = BLACK; 
 
-    opponentName = "CPU";
+    opponentName = "CPU"; // ←これ追加！！
 
-    document.getElementById('lobbyScreen').style.display = 'none';
-
-    document.getElementById('gameScreen').style.display = 'block';
-
+    document.getElementById('lobbyScreen').style.display = 'none'; 
     initGame(); 
-    updatePlayerNames();
-}
+	updatePlayerNames();
+}	
 
 		// 定期同期（オンライン時のみ）
 setInterval(() => {
@@ -982,20 +974,14 @@ setInterval(() => {
     }
 }, 500);
 // ←ここに置く！！
-window.addEventListener("DOMContentLoaded", () => {
+document.getElementById('settingsBtn').onclick = () => {
+    const menu = document.getElementById('settingsMenu');
+    menu.style.display = (menu.style.display === 'none') ? 'block' : 'none';
+};
 
-    document.getElementById('startScreen').style.display = 'flex';
-
-    document.getElementById('settingsBtn').onclick = () => {
-        const menu = document.getElementById('settingsMenu');
-        menu.style.display = (menu.style.display === 'none') ? 'block' : 'none';
-    };
-
-    document.getElementById('volumeSlider').oninput = (e) => {
-        volume = parseFloat(e.target.value);
-    };
-
-});
+document.getElementById('volumeSlider').oninput = (e) => {
+    volume = parseFloat(e.target.value);
+};
 
     </script>
 </body>
