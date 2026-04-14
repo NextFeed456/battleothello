@@ -204,7 +204,20 @@
 
 <div id="startScreen" class="screen-overlay">
     <img src="title.jpg" style="max-width: 80%; margin-bottom: 20px;">
-
+	<input 
+    type="text" 
+    id="playerNameInput" 
+    placeholder="名前を入力" 
+    style="
+        padding:10px;
+        font-size:16px;
+        margin-bottom:15px;
+        width:250px;
+        text-align:center;
+        border-radius:6px;
+        border:1px solid #555;
+    "
+>
 <div style="
     width:400px;
     font-size:12px;
@@ -300,6 +313,9 @@
         let peer = null, conn = null;
         let myPlayerId = BLACK;
 		let isHost = false;
+		let playerName = "PLAYER";
+		let opponentName = "ENEMY";
+		let nameSet = false;
 
         let board=[], hp={}, currentPlayer=1, isGameOver=false;
 	let volume = 0.2;
@@ -314,18 +330,30 @@
         // Stats
         let stats = { turns: 0, damage: { [BLACK]:0, [WHITE]:0 }, skills: { [BLACK]:0, [WHITE]:0 } };
         let gameHistory=[], audioCtx;
+		function goToLobby() {
+    const input = document.getElementById('playerNameInput');
 
-        function goToLobby() {
-            document.getElementById('startScreen').style.display='none';
-            initAudio();
-        }
+    if(input.value.trim() !== ""){
+        playerName = input.value;
+    }
 
-        function showOnlineMenu() { document.getElementById('modeSelect').style.display='none'; document.getElementById('onlineMenu').style.display='block'; }
-        function startCpuGame() { 
-            gameMode = 'cpu'; myPlayerId = BLACK; 
-            document.getElementById('lobbyScreen').style.display = 'none'; 
-            initGame(); 
-        }
+    updatePlayerNames(); // ←これ追加（重要）
+			
+    document.getElementById('startScreen').style.display='none';
+    initAudio();
+}
+function updatePlayerNames() {
+    const p1NameEl = document.querySelector('#p1Stats > div:first-child');
+    const p2NameEl = document.querySelector('#p2Stats > div:first-child');
+
+    if(myPlayerId === BLACK){
+        p1NameEl.textContent = playerName + " (BLACK)";
+        p2NameEl.textContent = opponentName + " (WHITE)";
+    }else{
+        p1NameEl.textContent = opponentName + " (BLACK)";
+        p2NameEl.textContent = playerName + " (WHITE)";
+    }
+}
 
         function initHost() {
             gameMode = 'online'; document.getElementById('connectionStatus').innerText = "IDを生成中...";
@@ -374,8 +402,22 @@ function setupConnection() {
     document.getElementById('lobbyScreen').style.display = 'none';
 
     conn.on('data', (data) => handleNetworkData(data));
+
+    conn.on('open', () => {
+        conn.send({
+            type: 'name',
+            name: playerName
+        });
+    });
 }
-		
+		function sendMyName() {
+    if (conn) {
+        conn.send({
+            type: 'name',
+            name: playerName
+        });
+    }
+}
         function syncData() {
             if(gameMode !== 'online' || !conn) return;
             const state = { type: 'sync', board, hp, currentPlayer, charges, maxCharges, destroyOwner, gambleOwner, phoenixModeUsed, ultimateCharge, isDestroyMode, destroyCount, isDestroyRewardMode, itemUsed, isGameOver, stats };
@@ -391,6 +433,10 @@ function setupConnection() {
                 updateUI(); renderBoard();
                 if(isGameOver) showResultScreen();
             } else if (data.type === 'log') log(data.msg);
+				else if (data.type === 'name') {
+			    opponentName = data.name;
+			    updatePlayerNames();
+			}
             else if (data.type === 'effect') {
                 playSE(data.sound);
                 if(data.visual === 'damage') showDamagePopup(data.val, data.target, data.self, data.heal);
@@ -462,7 +508,7 @@ function setupConnection() {
             hp[currentPlayer]+=HERB_HEAL; itemUsed[currentPlayer]=true;
             showDamagePopup(HERB_HEAL,currentPlayer,true,true);
             sendEffect('heal', 'damage', {val:HERB_HEAL, target:currentPlayer, self:true, heal:true});
-            log(`${currentPlayer===BLACK?"P1(黒)":"P2(白)"}は薬草を使った！ HP+${HERB_HEAL}`);
+            log(`${currentPlayer===BLACK?playerName:"P2(白)"}は薬草を使った！ HP+${HERB_HEAL}`);
             document.getElementById('itemMenu').style.display='none'; 
             nextTurn();
         }
@@ -471,7 +517,7 @@ function setupConnection() {
             if(p !== myPlayerId && gameMode === 'online') return;
             playSE('useless');
             const val = Math.floor(Math.random()*6)+1;
-            const pName = (p===BLACK) ? "P1(黒)" : "P2(白)";
+            const pName = (p===BLACK) ? playerName : "P2(白)";
             const msg = `${pName}のサイコロ: [ ${val} ]\n(意味はない)`;
             alert(msg); log(`${pName}は意味のないサイコロを振った: ${val}`); sendEffect('useless', 'alert', {msg});
         }
@@ -786,8 +832,8 @@ function setupConnection() {
  	   }
 
     prevCharge[BLACK] = charges[BLACK];
-    prevCharge[WHITE] = charges[WHITE];
-        }
+    prevCharge[WHITE] = charges[WHITE];	
+	}
         function renderBoard() {
             const el=document.getElementById('board'); el.innerHTML='';
             el.className=(isDestroyMode||isDestroyRewardMode)?'destroy-mode':'';
@@ -823,7 +869,8 @@ function setupConnection() {
         function endGame(w){ 
             isGameOver=true; 
             // Result Screen logic
-            document.getElementById('winnerText').textContent = (w===BLACK ? "PLAYER 1 WINS!" : "PLAYER 2 WINS!");
+			document.getElementById('winnerText').textContent =
+   			 (w === BLACK ? playerName : opponentName) + " WINS!";
             document.getElementById('winnerText').style.color = (w===BLACK ? "red" : "cyan");
             
             document.getElementById('resDmg1').textContent = stats.damage[BLACK];
@@ -859,7 +906,6 @@ setInterval(() => {
         syncData();
     }
 }, 500);
-
 // ←ここに置く！！
 document.getElementById('settingsBtn').onclick = () => {
     const menu = document.getElementById('settingsMenu');
