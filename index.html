@@ -351,16 +351,26 @@
             if(!hostId) return alert("IDを入力してください");
             document.getElementById('connectionStatus').innerText = "接続中...";
             peer = new Peer();
-            peer.on('open', (id) => { conn = peer.connect(hostId); myPlayerId = WHITE; setupConnection(); });
-            peer.on('error', (err) => alert("接続エラー: IDを確認してください"));
+peer.on('open', (id) => {
+    conn = peer.connect(hostId);
+    myPlayerId = WHITE;
+
+    conn.on('open', () => {
+        console.log("接続成功");
+        setupConnection();
+    });
+
+    conn.on('error', (err) => {
+        console.log("通信エラー", err);
+    });
+});            peer.on('error', (err) => alert("接続エラー: IDを確認してください"));
         }
-        function setupConnection() {
-            conn.on('open', () => {
-                document.getElementById('lobbyScreen').style.display = 'none';
-                if(myPlayerId === WHITE) updateUI();
-            });
-            conn.on('data', (data) => handleNetworkData(data));
-        }
+function setupConnection() {
+    document.getElementById('lobbyScreen').style.display = 'none';
+
+    conn.on('data', (data) => handleNetworkData(data));
+}
+		
         function syncData() {
             if(gameMode !== 'online' || !conn) return;
             const state = { type: 'sync', board, hp, currentPlayer, charges, maxCharges, destroyOwner, gambleOwner, phoenixModeUsed, ultimateCharge, isDestroyMode, destroyCount, isDestroyRewardMode, itemUsed, isGameOver, stats };
