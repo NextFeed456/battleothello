@@ -203,7 +203,7 @@
     </div>
 
 <div id="startScreen" class="screen-overlay">
-    <img src="title.jpg" style="max-width: 80%; margin-bottom: 20px;">
+<img src="title.png">
 	<input 
     type="text" 
     id="playerNameInput" 
@@ -314,8 +314,7 @@
         let myPlayerId = BLACK;
 		let isHost = false;
 		let playerName = "PLAYER";
-		let opponentName = "ENEMY";
-		let nameSet = false;
+		let opponentName = "接続待ち...";
 
         let board=[], hp={}, currentPlayer=1, isGameOver=false;
 	let volume = 0.2;
@@ -330,21 +329,27 @@
         // Stats
         let stats = { turns: 0, damage: { [BLACK]:0, [WHITE]:0 }, skills: { [BLACK]:0, [WHITE]:0 } };
         let gameHistory=[], audioCtx;
-		function goToLobby() {
+function goToLobby() {
     const input = document.getElementById('playerNameInput');
 
-    if(input.value.trim() !== ""){
-        playerName = input.value;
+    // 👇ここ追加
+    if(input.value.trim() === ""){
+        alert("名前を入力してください");
+        return;
     }
-		function showOnlineMenu() {
+
+    playerName = input.value;
+
+    updatePlayerNames();
+
+    document.getElementById('startScreen').style.display='none';
+    document.getElementById('lobbyScreen').style.display='flex';
+
+    initAudio();
+}
+function showOnlineMenu() {
     document.getElementById('modeSelect').style.display = 'none';
     document.getElementById('onlineMenu').style.display = 'block';
-}
-
-    updatePlayerNames(); // ←これ追加（重要）
-			
-    document.getElementById('startScreen').style.display='none';
-    initAudio();
 }
 function updatePlayerNames() {
     const p1NameEl = document.querySelector('#p1Stats > div:first-child');
@@ -372,13 +377,21 @@ function updatePlayerNames() {
                     <br><button class="lobby-btn" style="background:#555;" onclick="location.reload()">タイトルに戻る</button>`;
                 myPlayerId = BLACK;
             });
-            peer.on('connection', (c) => {
-                conn = c; 
-				setupConnection();
-				document.getElementById('lobbyScreen').style.display = 'none';
-                initGame(); 
-				setTimeout(() => syncData(), 500);
-            });
+peer.on('connection', (c) => {
+    conn = c;
+    setupConnection();
+
+    // 👇追加（ホスト側も名前送る）
+    setTimeout(() => {
+        sendMyName();
+    }, 300);
+
+    document.getElementById('lobbyScreen').style.display = 'none';
+    document.getElementById('startScreen').style.display = 'none';
+
+    initGame();
+    setTimeout(() => syncData(), 500);
+});
         }
         function initJoin() {
             gameMode = 'online';
@@ -390,30 +403,20 @@ peer.on('open', (id) => {
     conn = peer.connect(hostId);
     myPlayerId = WHITE;
 
-    conn.on('open', () => {
-        console.log("接続成功");
-        setupConnection();
-	    // 👇これ追加
+conn.on('open', () => {
+    console.log("接続成功");
+    setupConnection();
+
+    sendMyName(); // ←これ追加（超重要）
+
     initGame();		
-    });
+});
 
     conn.on('error', (err) => {
         console.log("通信エラー", err);
     });
 });            peer.on('error', (err) => alert("接続エラー: IDを確認してください"));
         }
-function setupConnection() {
-    document.getElementById('lobbyScreen').style.display = 'none';
-
-    conn.on('data', (data) => handleNetworkData(data));
-
-    conn.on('open', () => {
-        conn.send({
-            type: 'name',
-            name: playerName
-        });
-    });
-}
 		function sendMyName() {
     if (conn) {
         conn.send({
@@ -904,6 +907,12 @@ function setupConnection() {
             document.getElementById('resTurns').textContent = stats.turns;
             document.getElementById('resultScreen').style.display='flex';
 }
+function startCpuGame() {
+    gameMode = 'cpu';
+    document.getElementById('lobbyScreen').style.display = 'none';
+    initGame();
+}		
+
 		// 定期同期（オンライン時のみ）
 setInterval(() => {
     if (gameMode === 'online' && conn) {
@@ -918,6 +927,10 @@ document.getElementById('settingsBtn').onclick = () => {
 
 document.getElementById('volumeSlider').oninput = (e) => {
     volume = parseFloat(e.target.value);
+};
+window.onload = () => {
+    document.getElementById('startScreen').style.display = 'flex';
+    document.getElementById('lobbyScreen').style.display = 'none';
 };
     </script>
 </body>
