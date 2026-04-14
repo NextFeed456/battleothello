@@ -472,6 +472,9 @@ conn.on('open', () => {
         function handleNetworkData(data) {
             if(data.type === 'sync') {
 				const isFirstSync = board.length === 0;
+				    if (isFirstSync) {
+        initGame();  // ←これ
+    }
                 board = data.board;
 				if (isFirstSync) {
     console.log("初回同期 → ゲーム開始");
