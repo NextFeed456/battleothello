@@ -336,6 +336,10 @@
     if(input.value.trim() !== ""){
         playerName = input.value;
     }
+		function showOnlineMenu() {
+    document.getElementById('modeSelect').style.display = 'none';
+    document.getElementById('onlineMenu').style.display = 'block';
+}
 
     updatePlayerNames(); // ←これ追加（重要）
 			
