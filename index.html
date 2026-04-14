@@ -214,7 +214,7 @@
 <div id="startScreen" class="screen-overlay" style="position: relative; overflow: hidden;">
 
     <!-- 背景 -->
-	<img src="./title.png"
+	<img src="./title.png" style="
         position: absolute;
         top: 0;
         left: 0;
@@ -974,14 +974,18 @@ setInterval(() => {
     }
 }, 500);
 // ←ここに置く！！
-document.getElementById('settingsBtn').onclick = () => {
-    const menu = document.getElementById('settingsMenu');
-    menu.style.display = (menu.style.display === 'none') ? 'block' : 'none';
-};
+window.addEventListener("DOMContentLoaded", () => {
 
-document.getElementById('volumeSlider').oninput = (e) => {
-    volume = parseFloat(e.target.value);
-};
+    document.getElementById('settingsBtn').onclick = () => {
+        const menu = document.getElementById('settingsMenu');
+        menu.style.display = (menu.style.display === 'none') ? 'block' : 'none';
+    };
+
+    document.getElementById('volumeSlider').oninput = (e) => {
+        volume = parseFloat(e.target.value);
+    };
+
+});
 
     </script>
 </body>
