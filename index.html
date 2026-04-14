@@ -210,8 +210,11 @@
         </div>
         <div id="connectionStatus"></div>
     </div>
+
 <div id="startScreen" class="screen-overlay" style="position: relative; overflow: hidden;">
-    <video autoplay muted loop playsinline id="bgVideo" style="
+
+    <!-- 背景 -->
+	<img src="./title.png"
         position: absolute;
         top: 0;
         left: 0;
@@ -220,19 +223,8 @@
         object-fit: cover;
         z-index: 0;
     ">
-        <source src="./bg.mp4" type="video/mp4">
-    </video>
 
-    <div style="
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 1;
-    "></div>
-
+    <!-- 🔥 ここが超重要 -->
     <div style="
         position: absolute;
         top: 50%;
@@ -242,51 +234,49 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 100%;
     ">
-        <h1 style="color: #e67e22; font-size:48px; margin-bottom:20px; text-shadow: 2px 2px 10px #000;">BATTLE OTHELLO</h1>
 
         <input 
             type="text" 
             id="playerNameInput" 
             placeholder="名前を入力"
-            style="padding:12px; font-size:18px; margin-bottom:15px; width:280px; text-align:center; border-radius:5px; border:none;"
+            style="padding:10px; font-size:16px; margin-bottom:15px; width:250px; text-align:center;"
         >
 
         <div style="
-            width:420px;
-            font-size:13px;
-            color:#eee;
-            background:rgba(0,0,0,0.7);
-            padding:15px;
+            width:400px;
+            font-size:12px;
+            color:#ccc;
+            background:rgba(0,0,0,0.6);
+            padding:12px;
             border-radius:10px;
-            margin-bottom:25px;
-            line-height: 1.6;
-            border: 1px solid #444;
+            margin-bottom:20px;
         ">
         【操作方法】<br>
         ・マスをクリックして駒を置く<br>
-        ・ゲージMAXでスキル使用可能（駒を直接奪う）<br>
-        ・強奪：駒をクリックで奪う / 破壊：駒を破壊（HP消費）<br>
-        ・ギャンブル：勝てばボーナス / 薬草：HP回復<br>
-        ・HP 0 でフェニックスモード発動
+        ・ゲージMAXでスキル使用可能<br>
+        ・強奪：駒をクリックで奪う<br>
+        ・破壊：駒をクリックで破壊（HP消費）<br>
+        ・ギャンブル：勝てばボーナス<br>
+        ・薬草：HP回復（1回のみ）<br>
+        ・HP0でフェニックス発動
         </div>
 
         <button onclick="goToLobby()" style="
-            padding:18px 40px;
-            font-size:22px;
+            padding:15px 30px;
+            font-size:20px;
             background:#e67e22;
             color:white;
             border:none;
-            border-radius:8px;
+            border-radius:5px;
             cursor:pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transition: 0.2s;
-        " onmouseover="this.style.background='#f39c12'" onmouseout="this.style.background='#e67e22'">
-            GAME START
+        ">
+        GAME START
         </button>
+
     </div>
 </div>
+
     <div id="resultScreen">
         <div class="result-box">
             <div class="winner-text" id="winnerText">WINNER!</div>
