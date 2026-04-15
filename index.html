@@ -420,6 +420,7 @@ function initHost() {
     peer.on('connection', (c) => {
         conn = c;
         setupConnection();
+		sendMyName();
 
         document.getElementById('lobbyScreen').style.display = 'none';
         document.getElementById('startScreen').style.display = 'none';
@@ -588,7 +589,8 @@ conn.on('open', () => {
             hp[currentPlayer]+=HERB_HEAL; itemUsed[currentPlayer]=true;
             showDamagePopup(HERB_HEAL,currentPlayer,true,true);
             sendEffect('heal', 'damage', {val:HERB_HEAL, target:currentPlayer, self:true, heal:true});
-            log(`${currentPlayer===BLACK?playerName:"P2(白)"}は薬草を使った！ HP+${HERB_HEAL}`);
+            const pName = (currentPlayer === myPlayerId) ? playerName : opponentName;
+			log(`${pName}は薬草を使った！`);
             document.getElementById('itemMenu').style.display='none'; 
             nextTurn();
         }
@@ -597,7 +599,7 @@ conn.on('open', () => {
             if(p !== myPlayerId && gameMode === 'online') return;
             playSE('useless');
             const val = Math.floor(Math.random()*6)+1;
-            const pName = (p===BLACK) ? playerName : "P2(白)";
+            const pName = (currentPlayer === myPlayerId) ? playerName : opponentName;
             const msg = `${pName}のサイコロ: [ ${val} ]\n(意味はない)`;
             alert(msg); log(`${pName}は意味のないサイコロを振った: ${val}`); sendEffect('useless', 'alert', {msg});
         }
@@ -739,6 +741,8 @@ conn.on('open', () => {
 }
 
         function startGamble(pid) {
+			const myName = playerName;
+			const enemyName = opponentName;
             if(gameMode==='online' && (currentPlayer !== pid || gambleOwner !== pid || pid !== myPlayerId)) {
                 if(pid===myPlayerId) log("今はギャンブルできません(相手のターン)");
                 return;
@@ -754,10 +758,10 @@ conn.on('open', () => {
             ol.style.display='flex'; ct.innerHTML=`<div class="big-text">チンチロ勝負</div>`;
             setTimeout(()=>{
                 playSE('dice'); sendEffect('dice', null); const d1 = rollDice(); const s1 = calcScore(d1);
-                ct.innerHTML += `<div style="font-size:30px;color:#f1c40f;">あなた: ${d1.join('-')}</div>`;
+                ct.innerHTML += `<div style="font-size:30px;color:#f1c40f;">${myName}: ${d1.join('-')}</div>`;
                 setTimeout(()=>{
                     playSE('dice'); sendEffect('dice', null); const d2 = rollDice(); const s2 = calcScore(d2);
-                    ct.innerHTML += `<div style="font-size:30px;color:#888;">相手: ${d2.join('-')}</div>`;
+                    ct.innerHTML += `<div style="font-size:30px;color:#888;">${enemyName}: ${d2.join('-')}</div>`;
                     setTimeout(()=>{
                         if(s1 > s2) {
                             playSE('win'); sendEffect('win', null); ct.innerHTML += `<div class="big-text" style="color:yellow;">勝利! 破壊権x2 獲得</div>`;
@@ -821,9 +825,14 @@ conn.on('open', () => {
         }
 
         function toggleDestroy(pid) {
-            if(gameMode==='online' && (currentPlayer!==pid || destroyOwner!==pid || pid!==myPlayerId)) {
-                if(pid===myPlayerId) log("今は破壊できません(相手のターン/権限なし)"); return;
-            }
+ 	   if(gameMode==='online' && currentPlayer !== myPlayerId){
+	        return;
+	    }
+	
+	    if(pid !== myPlayerId){
+	        log("今は破壊できません(相手のターン/権限なし)");
+	        return;
+	    }
             if(gameMode==='cpu' && pid===BLACK && currentPlayer!==BLACK) { log("今は破壊できません(CPUのターン)"); return; }
             if(destroyOwner !== pid) { log("権限がありません"); return; }
             
@@ -910,7 +919,6 @@ conn.on('open', () => {
             if(currentPlayer===BLUE){
 				p1.classList.remove('active-turn');
 				p2.classList.remove('active-turn');
-				document.getElementById('board').style.borderColor='#00ffff'; 
 			}
             else document.getElementById('board').style.borderColor='#444';
             if(phoenixModeUsed) {
