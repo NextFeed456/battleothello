@@ -480,9 +480,11 @@ conn.on('open', () => {
             } else if (data.type === 'log') log(data.msg);
 				else if (data.type === 'name') {
 			    opponentName = data.name || "相手";
-				updatePlayerNames();
-				updateUI();
-			}
+
+				setTimeout(() => {
+			    updatePlayerNames();
+			    updateUI();
+				}, 100);}
             else if (data.type === 'effect') {
                 playSE(data.sound);
                 if(data.visual === 'damage') showDamagePopup(data.val, data.target, data.self, data.heal);
@@ -755,10 +757,14 @@ conn.on('open', () => {
 			}
 			const myName = playerName;
 			const enemyName = opponentName;
-            if(gameMode==='online' && (currentPlayer !== pid || gambleOwner !== pid || pid !== myPlayerId)) {
-                if(pid===myPlayerId) log("今はギャンブルできません(相手のターン)");
-                return;
-            }
+            if(gameMode === 'online'){
+    			if(currentPlayer !== pid){
+        			if(pid === myPlayerId){
+            			log("今はギャンブルできません（相手のターン）");
+       				 }
+        			return;
+   				 }
+			}
             if(gameMode==='cpu' && pid === BLACK && currentPlayer !== BLACK) {
                 log("今はギャンブルできません(CPUのターン)");
                 return;
