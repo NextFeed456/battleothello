@@ -470,11 +470,21 @@ conn.on('open', () => {
             conn.send(state);
         }
         function handleNetworkData(data) {
+			else if(data.visual === 'gambleStart'){
+			    const ol = document.getElementById('overlayLayer');
+			    const ct = document.getElementById('overlayContent');
+				ol.style.display='flex';
+				ct.innerHTML=`<div class="big-text">チンチロ勝負</div>`;
+			}
 		    if(data.type === 'destroy'){
 		        if(isHost){
 		            toggleDestroy(data.pid);
+					syncData();
 		        }
 		    }
+			else if(data.type === 'end'){
+				endGame(data.winner);
+			}
             if(data.type === 'sync') {
                 board = data.board;
 			hp = data.hp; currentPlayer = data.currentPlayer;
@@ -601,7 +611,8 @@ conn.on('open', () => {
             hp[currentPlayer]+=HERB_HEAL; itemUsed[currentPlayer]=true;
             showDamagePopup(HERB_HEAL,currentPlayer,true,true);
             sendEffect('heal', 'damage', {val:HERB_HEAL, target:currentPlayer, self:true, heal:true});
-            const msg = `${pName}は薬草を使った！`;
+            const pName = playerName;
+			const msg = `${pName}は薬草を使った！`;
 			log(msg);
 			sendLog(msg); // ←これ追加
             document.getElementById('itemMenu').style.display='none'; 
@@ -759,6 +770,7 @@ conn.on('open', () => {
 }
 
         function startGamble(pid) {
+			sendEffect(null, 'gambleStart');
 			if(gameMode === 'online' && !isHost){
 			    conn.send({
 	 		       type: 'gamble',
@@ -1050,7 +1062,12 @@ conn.on('open', () => {
             document.getElementById('resSkill1').textContent = stats.skills[BLACK];
             document.getElementById('resSkill2').textContent = stats.skills[WHITE];
             document.getElementById('resTurns').textContent = stats.turns;
-            
+			if(gameMode === 'online' && isHost){
+				conn.send({
+					type: 'end',
+					winner: w
+				});
+			}
             // Wait for piece to render then show screen
             setTimeout(() => {
                 document.getElementById('resultScreen').style.display='flex';
