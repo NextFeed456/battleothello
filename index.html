@@ -834,15 +834,14 @@ conn.on('open', () => {
 
         function toggleDestroy(pid) {
  	   if(gameMode==='online' && currentPlayer !== myPlayerId){
-	        return;
-	    }
-	
-	    if(pid !== myPlayerId){
-	        log("今は破壊できません(相手のターン/権限なし)");
-	        return;
-	    }
+	    log("今は破壊できません(相手のターン)");
+	    return;
+		}
+		if(destroyOwner !== myPlayerId){
+	    log("破壊スキルの権限がありません");
+	    return;
+	}
             if(gameMode==='cpu' && pid===BLACK && currentPlayer!==BLACK) { log("今は破壊できません(CPUのターン)"); return; }
-            if(destroyOwner !== pid) { log("権限がありません"); return; }
             
             isDestroyMode = !isDestroyMode; log(isDestroyMode ? "破壊モード: 対象を選択 (HP-100)" : "破壊モード解除"); updateUI(); renderBoard();
         }
@@ -1012,10 +1011,10 @@ conn.on('open', () => {
         function endGame(w){ 
             isGameOver=true; 
             // Result Screen logic
+			const winnerName = (w === myPlayerId) ? playerName : opponentName;
 			document.getElementById('winnerText').textContent =
-   			 (w === BLACK ? playerName : opponentName) + " WINS!";
-            document.getElementById('winnerText').style.color = (w===BLACK ? "red" : "cyan");
-            
+		    winnerName + " WINS!";
+            document.getElementById('winnerText').style.color = (w===BLACK ? "red" : "cyan");            
             document.getElementById('resDmg1').textContent = stats.damage[BLACK];
             document.getElementById('resDmg2').textContent = stats.damage[WHITE];
             document.getElementById('resSkill1').textContent = stats.skills[BLACK];
