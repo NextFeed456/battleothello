@@ -469,9 +469,6 @@ conn.on('open', () => {
         }
         function handleNetworkData(data) {
             if(data.type === 'sync') {
-				if(board.length === 0){
-  		      initGame();
- 			  }
                 board = data.board;
 			hp = data.hp; currentPlayer = data.currentPlayer;
                 charges = data.charges; maxCharges = data.maxCharges; destroyOwner = data.destroyOwner;
@@ -987,7 +984,7 @@ conn.on('open', () => {
 	}
         function renderBoard() {
             const el=document.getElementById('board'); el.innerHTML='';
-            el.className=(isDestroyMode||isDestroyRewardMode)?'destroy-mode':'';
+            el.classList.toggle('destroy-mode', isDestroyMode || isDestroyRewardMode);
             for(let r=0;r<8;r++)for(let c=0;c<8;c++){
                 const d=document.createElement('div'); d.className='cell'; d.onclick=()=>handleClick(r,c);
                 if(board[r][c]===BLACK) d.innerHTML='<div class="piece black-piece"></div>';
