@@ -412,14 +412,17 @@ function updatePlayerNames() {
                     <br><button class="lobby-btn" style="background:#555;" onclick="location.reload()">タイトルに戻る</button>`;
                 myPlayerId = BLACK;
             });
-peer.on('connection', (c) => {
+	peer.on('connection', (c) => {
     conn = c;
     setupConnection();
 
-    // 👇追加（ホスト側も名前送る）
-    setTimeout(() => {
-        sendMyName();
-    }, 300);
+    document.getElementById('lobbyScreen').style.display = 'none';
+    document.getElementById('startScreen').style.display = 'none';
+
+    initGame();
+
+    syncData(); // ←1回だけ
+});
 
     document.getElementById('lobbyScreen').style.display = 'none';
     document.getElementById('startScreen').style.display = 'none';
@@ -465,21 +468,14 @@ conn.on('open', () => {
     }
 }
         function syncData() {
-            if(gameMode !== 'online' || !conn) return;
+            if(gameMode !== 'online' || !conn || !isHost) return;
             const state = { type: 'sync', board, hp, currentPlayer, charges, maxCharges, destroyOwner, gambleOwner, phoenixModeUsed, ultimateCharge, isDestroyMode, destroyCount, isDestroyRewardMode, itemUsed, isGameOver, stats };
             conn.send(state);
         }
         function handleNetworkData(data) {
             if(data.type === 'sync') {
-				const isFirstSync = board.length === 0;
-				    if (isFirstSync) {
-        initGame();  // ←これ
-    }
                 board = data.board;
-				if (isFirstSync) {
-    console.log("初回同期 → ゲーム開始");
-}
-				hp = data.hp; currentPlayer = data.currentPlayer;
+			hp = data.hp; currentPlayer = data.currentPlayer;
                 charges = data.charges; maxCharges = data.maxCharges; destroyOwner = data.destroyOwner;
                 gambleOwner = data.gambleOwner; phoenixModeUsed = data.phoenixModeUsed; ultimateCharge = data.ultimateCharge;
                 isDestroyMode = data.isDestroyMode; destroyCount = data.destroyCount; isDestroyRewardMode = data.isDestroyRewardMode;
@@ -1021,13 +1017,6 @@ function startCpuGame() {
 	updatePlayerNames();
 }	
 
-		// 定期同期（オンライン時のみ）
-setInterval(() => {
-    if (gameMode === 'online' && conn) {
-        syncData();
-    }
-}, 500);
-// ←ここに置く！！
 document.getElementById('settingsBtn').onclick = () => {
     const menu = document.getElementById('settingsMenu');
     menu.style.display = (menu.style.display === 'none') ? 'block' : 'none';
