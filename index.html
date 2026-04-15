@@ -934,10 +934,6 @@ conn.on('open', () => {
                 if(destroyOwner===WHITE) document.getElementById('p2Stats').classList.add('phoenix-active');
             }
             document.getElementById('chargeVal').textContent=`${charges[BLACK]}/${maxCharges[BLACK]}`; 
-			document.getElementById('stealBtn1').style.display =
-    			(charges[BLACK] >= maxCharges[BLACK]) ? 'block' : 'none';
-			document.getElementById('stealBtn2').style.display =
-    			(charges[WHITE] >= maxCharges[WHITE]) ? 'block' : 'none';
             document.getElementById('chargeBar').style.width=Math.min(100,(charges[BLACK]/maxCharges[BLACK])*100)+'%';
             document.getElementById('whiteChargeVal').textContent=`${charges[WHITE]}/${maxCharges[WHITE]}`; 
             document.getElementById('whiteChargeBar').style.width=Math.min(100,(charges[WHITE]/maxCharges[WHITE])*100)+'%';
