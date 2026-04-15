@@ -1017,11 +1017,9 @@ conn.on('open', () => {
             isGameOver=true; 
             // Result Screen logic
 			const winnerName = (w === myPlayerId) ? playerName : opponentName;
+			const isWin = (w === myPlayerId);
 			document.getElementById('winnerText').textContent =
-		    const isWin = (w === myPlayerId);
-			const resultText = isWin ? "WINNER!" : "LOSS";
-			document.getElementById('winnerText').textContent =
- 			isWin ? `${playerName} WINS!` : `${playerName} LOSE...`;
+		    isWin ? `${playerName} WINS!` : `${playerName} LOSE...`;
             document.getElementById('winnerText').style.color = (w===BLACK ? "red" : "cyan");            
             document.getElementById('resDmg1').textContent = stats.damage[BLACK];
             document.getElementById('resDmg2').textContent = stats.damage[WHITE];
