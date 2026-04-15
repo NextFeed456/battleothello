@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+	<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -480,8 +480,8 @@ conn.on('open', () => {
             } else if (data.type === 'log') log(data.msg);
 				else if (data.type === 'name') {
 			    opponentName = data.name || "相手";
+				updatePlayerNames();
 				updateUI();
-			    updatePlayerNames();
 			}
             else if (data.type === 'effect') {
                 playSE(data.sound);
@@ -502,6 +502,11 @@ conn.on('open', () => {
 			syncData();
 		    }
 		}	
+		else if(data.type === 'gamble'){
+   		if(isHost){
+    	    startGamble(data.pid);
+	    }
+	}	
 		else if(data.type === 'requestSync'){
 	    if(isHost){
         syncData();
@@ -1013,7 +1018,10 @@ conn.on('open', () => {
             // Result Screen logic
 			const winnerName = (w === myPlayerId) ? playerName : opponentName;
 			document.getElementById('winnerText').textContent =
-		    winnerName + " WINS!";
+		    const isWin = (w === myPlayerId);
+			const resultText = isWin ? "WINNER!" : "LOSS";
+			document.getElementById('winnerText').textContent =
+ 			isWin ? `${playerName} WINS!` : `${playerName} LOSE...`;
             document.getElementById('winnerText').style.color = (w===BLACK ? "red" : "cyan");            
             document.getElementById('resDmg1').textContent = stats.damage[BLACK];
             document.getElementById('resDmg2').textContent = stats.damage[WHITE];
