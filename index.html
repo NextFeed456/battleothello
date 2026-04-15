@@ -420,7 +420,9 @@ function initHost() {
     peer.on('connection', (c) => {
         conn = c;
         setupConnection();
-		sendMyName();
+		setTimeout(() => {
+		    sendMyName();
+		}, 200);
 
         document.getElementById('lobbyScreen').style.display = 'none';
         document.getElementById('startScreen').style.display = 'none';
@@ -468,6 +470,11 @@ conn.on('open', () => {
             conn.send(state);
         }
         function handleNetworkData(data) {
+		    if(data.type === 'destroy'){
+		        if(isHost){
+		            toggleDestroy(data.pid);
+		        }
+		    }
             if(data.type === 'sync') {
                 board = data.board;
 			hp = data.hp; currentPlayer = data.currentPlayer;
@@ -594,8 +601,9 @@ conn.on('open', () => {
             hp[currentPlayer]+=HERB_HEAL; itemUsed[currentPlayer]=true;
             showDamagePopup(HERB_HEAL,currentPlayer,true,true);
             sendEffect('heal', 'damage', {val:HERB_HEAL, target:currentPlayer, self:true, heal:true});
-            const pName = (currentPlayer === myPlayerId) ? playerName : opponentName;
-			log(`${pName}は薬草を使った！`);
+            const msg = `${pName}は薬草を使った！`;
+			log(msg);
+			sendLog(msg); // ←これ追加
             document.getElementById('itemMenu').style.display='none'; 
             nextTurn();
         }
@@ -640,7 +648,10 @@ conn.on('open', () => {
                         nextTurn();
                     } else {
                         destroyPiece(r, c, false); destroyCount--;
-                        if(destroyCount <= 0) { log("破壊ボーナス終了"); isDestroyRewardMode = false; nextTurn(); }
+                        if(destroyCount <= 0) { log("破壊ボーナス終了"); isDestroyRewardMode = false;
+											   nextTurn();
+											   return;
+											  }
                         else log(`残り破壊回数: ${destroyCount}`);
                     }
                     syncData();
@@ -844,6 +855,13 @@ conn.on('open', () => {
         }
 
         function toggleDestroy(pid) {
+		if(gameMode === 'online' && !isHost){
+		    conn.send({
+			type: 'destroy',
+ 	       pid: pid
+		    });
+	    return;
+		}
  	   if(gameMode==='online' && currentPlayer !== myPlayerId){
 	    log("今は破壊できません(相手のターン)");
 	    return;
