@@ -483,6 +483,7 @@ conn.on('open', () => {
             } else if (data.type === 'log') log(data.msg);
 				else if (data.type === 'name') {
 			    opponentName = data.name || "相手";
+				updateUI();
 			    updatePlayerNames();
 			}
             else if (data.type === 'effect') {
@@ -599,17 +600,19 @@ conn.on('open', () => {
             if(p !== myPlayerId && gameMode === 'online') return;
             playSE('useless');
             const val = Math.floor(Math.random()*6)+1;
-            const pName = (currentPlayer === myPlayerId) ? playerName : opponentName;
+            const pName = (p === myPlayerId) ? playerName : opponentName;
             const msg = `${pName}のサイコロ: [ ${val} ]\n(意味はない)`;
             alert(msg); log(`${pName}は意味のないサイコロを振った: ${val}`); sendEffect('useless', 'alert', {msg});
         }
 
         function handleClick(r, c) {
     if(isGameOver || isGameOver==='rewinding' || currentPlayer===BLUE) return;
-    // 🔥追加（ここが重要）
     if(gameMode === 'online' && !isHost){
-    // 🔥これ追加（これがバグ原因）
     if(currentPlayer !== myPlayerId) return;
+	if(board[r][c] === EMPTY && getFlips(r,c,myPlayerId).length === 0){
+        log("そこには置けません");
+        return;
+    }
     conn.send({
         type: 'move',
         r: r,
@@ -741,6 +744,13 @@ conn.on('open', () => {
 }
 
         function startGamble(pid) {
+			if(gameMode === 'online' && !isHost){
+			    conn.send({
+	 		       type: 'gamble',
+					pid: pid
+			    });
+			    return;
+			}
 			const myName = playerName;
 			const enemyName = opponentName;
             if(gameMode==='online' && (currentPlayer !== pid || gambleOwner !== pid || pid !== myPlayerId)) {
@@ -797,6 +807,7 @@ conn.on('open', () => {
                 setTimeout(()=>{ 
                     applyDamage(pid, 50); 
                     nextTurn(); 
+					syncData();
                 },1500);
             } else { log("消滅する駒がありません"); nextTurn(); }
         }
@@ -926,6 +937,10 @@ conn.on('open', () => {
                 if(destroyOwner===WHITE) document.getElementById('p2Stats').classList.add('phoenix-active');
             }
             document.getElementById('chargeVal').textContent=`${charges[BLACK]}/${maxCharges[BLACK]}`; 
+			document.getElementById('stealBtn1').style.display =
+    			(charges[BLACK] >= maxCharges[BLACK]) ? 'block' : 'none';
+			document.getElementById('stealBtn2').style.display =
+    			(charges[WHITE] >= maxCharges[WHITE]) ? 'block' : 'none';
             document.getElementById('chargeBar').style.width=Math.min(100,(charges[BLACK]/maxCharges[BLACK])*100)+'%';
             document.getElementById('whiteChargeVal').textContent=`${charges[WHITE]}/${maxCharges[WHITE]}`; 
             document.getElementById('whiteChargeBar').style.width=Math.min(100,(charges[WHITE]/maxCharges[WHITE])*100)+'%';
