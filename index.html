@@ -490,7 +490,14 @@ conn.on('open', () => {
 			else if (data.type === 'phoenix') {
 		    activatePhoenix(data.loser, true);
 			}
-        }
+			else if (data.type === 'move') {
+
+		    // ホストだけ処理
+		    if(isHost){
+	        handleMoveLogic(data.r, data.c, currentPlayer);
+		    }
+		}	
+	}
         function sendLog(msg) { if(conn) conn.send({ type: 'log', msg: msg }); }
         function sendEffect(sound, visual, params={}) { if(conn) conn.send({ type: 'effect', sound, visual, ...params }); }
 
@@ -585,11 +592,23 @@ conn.on('open', () => {
         }
 
         function handleClick(r, c) {
-            if(isGameOver || isGameOver==='rewinding' || currentPlayer===BLUE) return;
-            if(gameMode === 'online' && currentPlayer !== myPlayerId) return;
-            if(gameMode === 'cpu' && currentPlayer !== BLACK) return; 
-            handleMoveLogic(r, c, currentPlayer);
-        }
+    if(isGameOver || isGameOver==='rewinding' || currentPlayer===BLUE) return;
+
+    // 🔥追加（ここが重要）
+    if(gameMode === 'online' && !isHost){
+        conn.send({
+            type: 'move',
+            r: r,
+            c: c
+        });
+        return;
+    }
+
+    if(gameMode === 'online' && currentPlayer !== myPlayerId) return;
+    if(gameMode === 'cpu' && currentPlayer !== BLACK) return; 
+
+    handleMoveLogic(r, c, currentPlayer);
+}
 
         function handleMoveLogic(r, c, player) {
             if(isDestroyMode || isDestroyRewardMode) {
