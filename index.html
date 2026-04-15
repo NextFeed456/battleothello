@@ -399,42 +399,35 @@ function updatePlayerNames() {
     }
 }
 
-        function initHost() {
-            gameMode = 'online'; document.getElementById('connectionStatus').innerText = "IDを生成中...";
-            peer = new Peer();
-            peer.on('open', (id) => {
-				isHost = true; // ←これ追加
-                document.getElementById('onlineMenu').innerHTML = `
-                    <div style="font-size:20px; color:cyan;">あなたのID:</div>
-                    <div style="font-size:30px; font-weight:bold; background:#333; padding:10px; user-select:all;">${id}</div>
-                    <p style="font-size:12px;">※通信環境により時間がかかる場合があります</p>
-                    <div style="color:yellow;">接続待ち...</div>
-                    <br><button class="lobby-btn" style="background:#555;" onclick="location.reload()">タイトルに戻る</button>`;
-                myPlayerId = BLACK;
-            });
-	peer.on('connection', (c) => {
-    conn = c;
-    setupConnection();
+function initHost() {
+    gameMode = 'online';
+    document.getElementById('connectionStatus').innerText = "IDを生成中...";
 
-    document.getElementById('lobbyScreen').style.display = 'none';
-    document.getElementById('startScreen').style.display = 'none';
+    peer = new Peer();
 
-    initGame();
+    peer.on('open', (id) => {
+        isHost = true;
 
-    syncData(); // ←1回だけ
-});
+        document.getElementById('onlineMenu').innerHTML = `
+            <div style="font-size:20px; color:cyan;">あなたのID:</div>
+            <div style="font-size:30px; font-weight:bold; background:#333; padding:10px; user-select:all;">${id}</div>
+            <div style="color:yellow;">接続待ち...</div>
+        `;
 
-    document.getElementById('lobbyScreen').style.display = 'none';
-    document.getElementById('startScreen').style.display = 'none';
+        myPlayerId = BLACK;
+    });
 
-    initGame();
+    peer.on('connection', (c) => {
+        conn = c;
+        setupConnection();
 
-	// 👇追加
-	syncData();
-	setTimeout(() => syncData(), 500);
-	setTimeout(() => syncData(), 1000);
-});
-        }
+        document.getElementById('lobbyScreen').style.display = 'none';
+        document.getElementById('startScreen').style.display = 'none';
+
+        initGame();
+        syncData();
+    });
+}
         function initJoin() {
             gameMode = 'online';
             const hostId = document.getElementById('joinInput').value;
