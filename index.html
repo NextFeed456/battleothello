@@ -470,7 +470,7 @@ conn.on('open', () => {
             conn.send(state);
         }
         function handleNetworkData(data) {
-			else if(data.visual === 'gambleStart'){
+			if(data.visual === 'gambleStart'){
 			    const ol = document.getElementById('overlayLayer');
 			    const ct = document.getElementById('overlayContent');
 				ol.style.display='flex';
