@@ -502,13 +502,11 @@ conn.on('open', () => {
                 if(isGameOver) showResultScreen();
             } else if (data.type === 'log') log(data.msg);
 				else if (data.type === 'name') {
-			    if(!opponentName || opponentName === "接続待ち..."){
+					if(data.name === playerName) return;
 					opponentName = data.name || "相手";
+					updatePlayerNames();
+					updateUI();
 				}
-				setTimeout(() => {
-			    updatePlayerNames();
-			    updateUI();
-				}, 100);}
             else if (data.type === 'effect') {
                 playSE(data.sound);
                 if(data.visual === 'damage') showDamagePopup(data.val, data.target, data.self, data.heal);
@@ -784,7 +782,9 @@ conn.on('open', () => {
 }
 
         function startGamble(pid) {
-			sendEffect(null, 'gambleStart');
+			if(isHost){
+				sendEffect(null, 'gambleStart');
+			}
 			if(gameMode === 'online' && !isHost){
 			    conn.send({
 	 		       type: 'gamble',
@@ -888,7 +888,7 @@ conn.on('open', () => {
 		    });
 	    return;
 		}
- 	   if(gameMode==='online' && currentPlayer !== myPlayerId){
+ 	   if(gameMode==='online' && currentPlayer !== pid){
 	    log("今は破壊できません(相手のターン)");
 	    return;
 		}
