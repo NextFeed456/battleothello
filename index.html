@@ -482,6 +482,12 @@ conn.on('open', () => {
 					syncData();
 		        }
 		    }
+				else if(data.type === 'herb'){
+					if(isHost){
+						useHerb();
+						syncData();
+					}
+				}
 			else if(data.type === 'end'){
 				endGame(data.winner);
 			}
@@ -496,8 +502,9 @@ conn.on('open', () => {
                 if(isGameOver) showResultScreen();
             } else if (data.type === 'log') log(data.msg);
 				else if (data.type === 'name') {
-			    opponentName = data.name || "相手";
-
+			    if(!opponentName || opponentName === "接続待ち..."){
+					opponentName = data.name || "相手";
+				}
 				setTimeout(() => {
 			    updatePlayerNames();
 			    updateUI();
@@ -605,6 +612,13 @@ conn.on('open', () => {
         }
 
         function useHerb() {
+			if(gameMode === 'online' && !isHost){
+				conn.send({
+					type: 'herb',
+					pid: myPlayerId
+				});
+				return;
+			}
             if(isGameOver || currentPlayer!==myPlayerId || currentPlayer===BLUE) return;
             if(itemUsed[currentPlayer]){ log("道具は一度しか使えません"); return; }
             playSE('heal'); sendEffect('heal', null);
